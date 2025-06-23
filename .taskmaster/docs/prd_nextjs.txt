@@ -1,0 +1,112 @@
+# Next.js + Supabase Todo 앱 개발 - Product Requirements Document (PRD)
+
+## 프로젝트 개요
+Next.js 14와 Supabase를 활용한 현대적인 웹 기반 할 일 관리 애플리케이션을 개발합니다. 사용자 인증, 실시간 데이터 동기화, 반응형 디자인을 포함한 완전한 기능의 Todo 앱을 구축합니다.
+
+## 핵심 기능
+
+### 1. 인증 시스템
+- Supabase Auth를 활용한 사용자 로그인/회원가입
+- 보호된 라우트 및 인증 상태 관리
+- 프로필 관리 기능
+
+### 2. Todo CRUD 기능
+- 새로운 Todo 생성 (제목, 설명, 마감일, 진행률)
+- Todo 수정 및 삭제
+- 완료 상태 토글
+- 진행률 업데이트
+
+### 3. 데이터 관리
+- Supabase PostgreSQL 데이터베이스 연동
+- 실시간 데이터 동기화
+- Row Level Security (RLS) 정책 적용
+
+### 4. 사용자 인터페이스
+- Next.js 14 App Router 기반
+- Tailwind CSS를 활용한 현대적인 디자인
+- 반응형 웹 디자인 (모바일, 태블릿, 데스크톱)
+- TypeScript를 활용한 타입 안전성
+
+### 5. 고급 기능
+- 필터링 (완료/미완료)
+- 검색 기능
+- 정렬 기능 (마감일, 생성일, 진행률)
+- 진행률 바 시각화
+
+## 기술 스택
+- **Frontend**: Next.js 14 (App Router), TypeScript, Tailwind CSS
+- **Backend**: Supabase (PostgreSQL, Auth, Real-time)
+- **배포**: Vercel, Supabase Cloud
+- **개발 도구**: ESLint, Prettier
+
+## 데이터베이스 스키마
+
+### profiles 테이블
+```sql
+CREATE TABLE profiles (
+  id UUID REFERENCES auth.users(id) PRIMARY KEY,
+  email VARCHAR(255) NOT NULL,
+  full_name VARCHAR(255),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+### todos 테이블
+```sql
+CREATE TABLE todos (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  due_date TIMESTAMP WITH TIME ZONE,
+  completed BOOLEAN DEFAULT FALSE,
+  progress INTEGER DEFAULT 0 CHECK (progress >= 0 AND progress <= 100),
+  created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+  updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+```
+
+## 사용자 스토리
+1. 사용자로서 회원가입하고 로그인할 수 있어야 한다.
+2. 사용자로서 새로운 Todo를 생성할 수 있어야 한다.
+3. 사용자로서 기존 Todo를 수정하고 삭제할 수 있어야 한다.
+4. 사용자로서 Todo의 완료 상태를 토글할 수 있어야 한다.
+5. 사용자로서 Todo의 진행률을 업데이트할 수 있어야 한다.
+6. 사용자로서 Todo 목록을 필터링하고 검색할 수 있어야 한다.
+7. 사용자로서 프로필 정보를 관리할 수 있어야 한다.
+
+## 비기능적 요구사항
+- 빠른 로딩 시간 (3초 이내)
+- 크로스 브라우저 호환성
+- 접근성 고려 (WCAG 2.1 AA 수준)
+- 모바일 기기에서도 원활한 사용 가능
+- 실시간 데이터 동기화
+- 보안 (RLS, 인증)
+
+## 개발 단계
+
+### 1주차: 프로젝트 설정 및 인증
+- Next.js 14 프로젝트 설정
+- Supabase 연동
+- 데이터베이스 스키마 생성
+- 인증 시스템 구현
+- 기본 레이아웃 구성
+
+### 2주차: Todo CRUD 기능
+- Todo 목록 페이지
+- Todo 생성/수정/삭제 기능
+- 진행률 관리
+- 상태 업데이트
+
+### 3주차: 고급 기능 및 배포
+- 필터링 및 검색 기능
+- UI/UX 개선
+- 성능 최적화
+- 배포 및 테스트
+
+## 제약사항
+- Next.js 14 App Router 사용
+- TypeScript 필수 사용
+- Supabase를 백엔드로 사용
+- Vercel 배포
+- 반응형 디자인 필수 

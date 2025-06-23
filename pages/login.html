@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 - Todo 앱</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>📝 Todo 앱</h1>
+                <h2>로그인</h2>
+                <p>계정에 로그인하여 할 일을 관리하세요</p>
+            </div>
+
+            <div id="message"></div>
+
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label for="email">이메일</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="이메일을 입력하세요" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">비밀번호</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="비밀번호를 입력하세요" required>
+                    <small class="form-text">6자 이상, 영문자+숫자</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+                    <span class="btn-text">로그인</span>
+                    <span class="btn-loading" style="display: none;">로그인 중...</span>
+                </button>
+            </form>
+
+            <div class="auth-links">
+                <p>계정이 없으신가요? <a href="signup.html">회원가입</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 파일들 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase.js"></script>
+    <script src="../js/auth.js"></script>
+
+    <script>
+        // 로그인 폼 처리
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault()
+            
+            const email = document.getElementById('email').value
+            const password = document.getElementById('password').value
+            const loginBtn = document.getElementById('login-btn')
+            const btnText = loginBtn.querySelector('.btn-text')
+            const btnLoading = loginBtn.querySelector('.btn-loading')
+            
+            // 로딩 상태
+            loginBtn.disabled = true
+            btnText.style.display = 'none'
+            btnLoading.style.display = 'inline'
+            
+            try {
+                if (window.Auth) {
+                    const result = await Auth.signIn(email, password)
+                    if (result.success) {
+                        showMessage('로그인 성공! 메인 페이지로 이동합니다...', 'success')
+                        setTimeout(() => {
+                            window.location.href = '../index.html'
+                        }, 1500)
+                    } else {
+                        showMessage(result.error, 'error')
+                    }
+                } else {
+                    showMessage('인증 시스템을 불러오는 중 오류가 발생했습니다.', 'error')
+                }
+            } catch (error) {
+                console.error('로그인 오류:', error)
+                showMessage('로그인 중 오류가 발생했습니다.', 'error')
+            } finally {
+                // 로딩 상태 해제
+                loginBtn.disabled = false
+                btnText.style.display = 'inline'
+                btnLoading.style.display = 'none'
+            }
+        })
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message')
+            messageDiv.textContent = message
+            messageDiv.className = `message ${type}`
+            messageDiv.style.display = 'block'
+            
+            // 3초 후 메시지 숨기기
+            setTimeout(() => {
+                messageDiv.style.display = 'none'
+            }, 3000)
+        }
+
+        // 페이지 로드 시 이미 로그인된 사용자 확인
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (window.Auth) {
+                const user = await Auth.getCurrentUser()
+                if (user) {
+                    // 이미 로그인된 경우 메인 페이지로 리다이렉트
+                    window.location.href = '../index.html'
+                }
+            }
+        })
+    </script>
+</body>
+</html> 

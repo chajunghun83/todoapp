@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>로그인 - Todo 앱</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>📝 Todo 앱</h1>
+                <h2>로그인</h2>
+                <p>계정에 로그인하여 할 일을 관리하세요</p>
+            </div>
+
+            <div id="message"></div>
+
+            <form id="login-form" class="auth-form">
+                <div class="form-group">
+                    <label for="email">이메일</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="이메일을 입력하세요" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">비밀번호</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="비밀번호를 입력하세요" required>
+                    <small class="form-text">6자 이상, 영문자+숫자</small>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full" id="login-btn">
+                    <span class="btn-text">로그인</span>
+                    <span class="btn-loading" style="display: none;">로그인 중...</span>
+                </button>
+            </form>
+
+            <!-- 디버깅 버튼들 -->
+            <div style="margin-top: 20px; padding: 15px; background: #f8f9fa; border-radius: 5px; border: 1px solid #ddd;">
+                <h5 style="margin-bottom: 10px;">🔧 디버깅 도구</h5>
+                <button onclick="checkCurrentSession()" class="btn btn-secondary" style="margin: 3px; padding: 5px 10px; font-size: 12px;">세션 확인</button>
+                <button onclick="checkCurrentUser()" class="btn btn-secondary" style="margin: 3px; padding: 5px 10px; font-size: 12px;">사용자 확인</button>
+                <button onclick="testLogin()" class="btn btn-secondary" style="margin: 3px; padding: 5px 10px; font-size: 12px;">로그인 테스트</button>
+                <button onclick="checkProfiles()" class="btn btn-secondary" style="margin: 3px; padding: 5px 10px; font-size: 12px;">프로필 확인</button>
+                <button onclick="resetPassword()" class="btn btn-warning" style="margin: 3px; padding: 5px 10px; font-size: 12px;">비밀번호 재설정</button>
+                <button onclick="updatePassword()" class="btn btn-success" style="margin: 3px; padding: 5px 10px; font-size: 12px;">새 비밀번호 설정</button>
+                <button onclick="switchToTestMode()" class="btn btn-primary" style="margin: 3px; padding: 5px 10px; font-size: 12px;">테스트 모드 전환</button>
+                <div id="debug-result" style="margin-top: 10px; padding: 10px; background: #fff; border: 1px solid #ccc; border-radius: 3px; font-family: monospace; font-size: 11px; max-height: 200px; overflow-y: auto;"></div>
+            </div>
+
+            <div class="auth-links">
+                <p>계정이 없으신가요? <a href="signup.html">회원가입</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 파일들 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase.js"></script>
+    <script src="../js/auth.js"></script>
+    <script src="../debug_auth.js"></script>
+    <script src="../quick_email_fix.js"></script>
+
+    <script>
+        // 로그인 폼 처리
+        document.getElementById('login-form').addEventListener('submit', async function(e) {
+            e.preventDefault()
+            
+            const email = document.getElementById('email').value
+            const password = document.getElementById('password').value
+            const loginBtn = document.getElementById('login-btn')
+            const btnText = loginBtn.querySelector('.btn-text')
+            const btnLoading = loginBtn.querySelector('.btn-loading')
+            
+            // 로딩 상태
+            loginBtn.disabled = true
+            btnText.style.display = 'none'
+            btnLoading.style.display = 'inline'
+            
+            try {
+                if (window.Auth) {
+                    const result = await Auth.signIn(email, password)
+                    if (result.success) {
+                        showMessage('로그인 성공! 메인 페이지로 이동합니다...', 'success')
+                        setTimeout(() => {
+                            window.location.href = '../index.html'
+                        }, 1500)
+                    } else {
+                        showMessage(result.error, 'error')
+                    }
+                } else {
+                    showMessage('인증 시스템을 불러오는 중 오류가 발생했습니다.', 'error')
+                }
+            } catch (error) {
+                console.error('로그인 오류:', error)
+                showMessage('로그인 중 오류가 발생했습니다.', 'error')
+            } finally {
+                // 로딩 상태 해제
+                loginBtn.disabled = false
+                btnText.style.display = 'inline'
+                btnLoading.style.display = 'none'
+            }
+        })
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message')
+            messageDiv.textContent = message
+            messageDiv.className = `message ${type}`
+            messageDiv.style.display = 'block'
+            
+            // 3초 후 메시지 숨기기
+            setTimeout(() => {
+                messageDiv.style.display = 'none'
+            }, 3000)
+        }
+
+        // 디버깅 함수들
+        function showDebugResult(title, data) {
+            const debugDiv = document.getElementById('debug-result')
+            debugDiv.innerHTML = `<strong>${title}:</strong><br><pre>${JSON.stringify(data, null, 2)}</pre>`
+        }
+
+        async function checkCurrentSession() {
+            try {
+                const result = await supabaseClient.auth.getSession()
+                showDebugResult('세션 확인', {
+                    hasSession: !!result.data.session,
+                    hasUser: !!result.data.session?.user,
+                    userId: result.data.session?.user?.id,
+                    email: result.data.session?.user?.email,
+                    emailConfirmed: result.data.session?.user?.email_confirmed_at,
+                    error: result.error
+                })
+            } catch (error) {
+                showDebugResult('세션 확인 오류', error.message)
+            }
+        }
+
+        async function checkCurrentUser() {
+            try {
+                const result = await supabaseClient.auth.getUser()
+                showDebugResult('사용자 확인', {
+                    hasUser: !!result.data.user,
+                    userId: result.data.user?.id,
+                    email: result.data.user?.email,
+                    emailConfirmed: result.data.user?.email_confirmed_at,
+                    error: result.error
+                })
+            } catch (error) {
+                showDebugResult('사용자 확인 오류', error.message)
+            }
+        }
+
+        async function testLogin() {
+            const email = document.getElementById('email').value
+            const password = document.getElementById('password').value
+            
+            if (!email || !password) {
+                showDebugResult('로그인 테스트', '이메일과 비밀번호를 먼저 입력해주세요')
+                return
+            }
+
+            try {
+                const result = await supabaseClient.auth.signInWithPassword({
+                    email: email,
+                    password: password
+                })
+                showDebugResult('로그인 테스트', {
+                    success: !result.error,
+                    hasUser: !!result.data.user,
+                    userId: result.data.user?.id,
+                    email: result.data.user?.email,
+                    error: result.error?.message
+                })
+            } catch (error) {
+                showDebugResult('로그인 테스트 오류', error.message)
+            }
+        }
+
+        async function checkProfiles() {
+            try {
+                const result = await supabaseClient.from('profiles').select('*')
+                showDebugResult('프로필 확인', {
+                    success: !result.error,
+                    count: result.data?.length || 0,
+                    profiles: result.data,
+                    error: result.error?.message
+                })
+            } catch (error) {
+                showDebugResult('프로필 확인 오류', error.message)
+            }
+        }
+
+        async function resetPassword() {
+            const email = document.getElementById('email').value
+            
+            if (!email) {
+                showDebugResult('비밀번호 재설정', '이메일을 먼저 입력해주세요')
+                return
+            }
+
+            try {
+                const result = await supabaseClient.auth.resetPasswordForEmail(email, {
+                    redirectTo: window.location.origin + '/pages/login.html'
+                })
+                
+                if (result.error) {
+                    showDebugResult('비밀번호 재설정', {
+                        success: false,
+                        error: result.error.message
+                    })
+                } else {
+                    showDebugResult('비밀번호 재설정', {
+                        success: true,
+                        message: '비밀번호 재설정 이메일이 전송되었습니다. 이메일을 확인해주세요.'
+                    })
+                    alert('비밀번호 재설정 이메일이 전송되었습니다!\n이메일을 확인하여 새 비밀번호를 설정해주세요.')
+                }
+            } catch (error) {
+                showDebugResult('비밀번호 재설정 오류', error.message)
+            }
+        }
+
+        async function updatePassword() {
+            const newPassword = prompt('새 비밀번호를 입력하세요 (6자 이상, 영문자+숫자):')
+            
+            if (!newPassword) {
+                showDebugResult('비밀번호 변경', '비밀번호를 입력해주세요')
+                return
+            }
+
+            if (newPassword.length < 6) {
+                showDebugResult('비밀번호 변경', '비밀번호는 6자 이상이어야 합니다')
+                return
+            }
+
+            try {
+                // 현재 세션 확인
+                const { data: { session } } = await supabaseClient.auth.getSession()
+                
+                if (!session) {
+                    showDebugResult('비밀번호 변경', '비밀번호 재설정 링크를 먼저 클릭해야 합니다')
+                    return
+                }
+
+                const result = await supabaseClient.auth.updateUser({
+                    password: newPassword
+                })
+                
+                if (result.error) {
+                    showDebugResult('비밀번호 변경', {
+                        success: false,
+                        error: result.error.message
+                    })
+                } else {
+                    showDebugResult('비밀번호 변경', {
+                        success: true,
+                        message: '비밀번호가 성공적으로 변경되었습니다!'
+                    })
+                    alert('비밀번호가 변경되었습니다!\n이제 새 비밀번호로 로그인할 수 있습니다.')
+                    
+                    // 비밀번호 필드에 새 비밀번호 자동 입력
+                    document.getElementById('password').value = newPassword
+                }
+            } catch (error) {
+                showDebugResult('비밀번호 변경 오류', error.message)
+            }
+        }
+
+        // 페이지 로드 시 이미 로그인된 사용자 확인
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (window.Auth) {
+                const user = await Auth.getCurrentUser()
+                if (user) {
+                    // 이미 로그인된 경우 메인 페이지로 리다이렉트
+                    window.location.href = '../index.html'
+                }
+            }
+        })
+    </script>
+</body>
+</html> 

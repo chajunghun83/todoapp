@@ -1,0 +1,28 @@
+# 개발용 파일들
+debug_auth.js
+quick_email_fix.js
+add_progress_column.js
+add_start_date_column.js
+fix_supabase.js
+fix_supabase_api.js
+show_sql.js
+
+# 불필요한 디렉토리
+todo-app-clean/
+src/
+scripts/
+-p/
+
+# 개발 문서
+SUPABASE_MCP_SETUP.md
+work_list.md
+README.md
+
+# Node.js (사용하지 않음)
+node_modules/
+package*.json
+tsconfig.json
+
+# 기타
+.env
+*.log 

@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>회원가입 - Todo 앱</title>
+    <link rel="stylesheet" href="../css/style.css">
+</head>
+<body>
+    <div class="auth-container">
+        <div class="auth-card">
+            <div class="auth-header">
+                <h1>📝 Todo 앱</h1>
+                <h2>회원가입</h2>
+                <p>새 계정을 만들어 할 일 관리를 시작하세요</p>
+            </div>
+
+            <div id="message"></div>
+
+            <form id="signup-form" class="auth-form">
+                <div class="form-group">
+                    <label for="fullName">이름 *</label>
+                    <input type="text" id="fullName" name="fullName" class="form-control" placeholder="이름을 입력하세요" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="email">이메일 *</label>
+                    <input type="email" id="email" name="email" class="form-control" placeholder="이메일을 입력하세요" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">비밀번호 *</label>
+                    <input type="password" id="password" name="password" class="form-control" placeholder="비밀번호를 입력하세요" required minlength="6">
+                    <small class="form-text">6자 이상, 영문자+숫자</small>
+                </div>
+
+                <div class="form-group">
+                    <label for="confirmPassword">비밀번호 확인 *</label>
+                    <input type="password" id="confirmPassword" name="confirmPassword" class="form-control" placeholder="비밀번호를 다시 입력하세요" required>
+                </div>
+
+                <button type="submit" class="btn btn-primary btn-full" id="signup-btn">
+                    <span class="btn-text">회원가입</span>
+                    <span class="btn-loading" style="display: none;">가입 중...</span>
+                </button>
+            </form>
+
+            <div class="auth-links">
+                <p>이미 계정이 있으신가요? <a href="login.html">로그인</a></p>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript 파일들 -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="../js/supabase.js"></script>
+    <script src="../js/auth.js"></script>
+
+    <script>
+        // 회원가입 폼 처리
+        document.getElementById('signup-form').addEventListener('submit', async function(e) {
+            e.preventDefault()
+            
+            const fullName = document.getElementById('fullName').value.trim()
+            const email = document.getElementById('email').value.trim()
+            const password = document.getElementById('password').value
+            const confirmPassword = document.getElementById('confirmPassword').value
+            const signupBtn = document.getElementById('signup-btn')
+            const btnText = signupBtn.querySelector('.btn-text')
+            const btnLoading = signupBtn.querySelector('.btn-loading')
+            
+            // 필수 필드 검사
+            if (!fullName) {
+                showMessage('이름을 입력해주세요.', 'error')
+                document.getElementById('fullName').focus()
+                return
+            }
+            
+            if (fullName.length < 2) {
+                showMessage('이름은 최소 2자 이상 입력해주세요.', 'error')
+                document.getElementById('fullName').focus()
+                return
+            }
+            
+            if (!email) {
+                showMessage('이메일을 입력해주세요.', 'error')
+                document.getElementById('email').focus()
+                return
+            }
+            
+            // 이메일 형식 검사
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            if (!emailRegex.test(email)) {
+                showMessage('올바른 이메일 형식을 입력해주세요.', 'error')
+                document.getElementById('email').focus()
+                return
+            }
+            
+            if (!password) {
+                showMessage('비밀번호를 입력해주세요.', 'error')
+                document.getElementById('password').focus()
+                return
+            }
+            
+            if (password.length < 6) {
+                showMessage('비밀번호는 최소 6자 이상이어야 합니다.', 'error')
+                document.getElementById('password').focus()
+                return
+            }
+            
+            // 비밀번호 강도 검사 (영문자와 숫자 포함)
+            const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{6,}$/
+            if (!passwordRegex.test(password)) {
+                showMessage('비밀번호는 영문자와 숫자를 포함해야 합니다.', 'error')
+                document.getElementById('password').focus()
+                return
+            }
+            
+            if (!confirmPassword) {
+                showMessage('비밀번호 확인을 입력해주세요.', 'error')
+                document.getElementById('confirmPassword').focus()
+                return
+            }
+            
+            // 비밀번호 일치 확인
+            if (password !== confirmPassword) {
+                showMessage('비밀번호가 일치하지 않습니다.', 'error')
+                document.getElementById('confirmPassword').focus()
+                return
+            }
+            
+            // 로딩 상태
+            signupBtn.disabled = true
+            btnText.style.display = 'none'
+            btnLoading.style.display = 'inline'
+            
+            try {
+                if (window.Auth) {
+                    const result = await Auth.signUp(email, password, fullName)
+                    if (result.success) {
+                        showMessage('회원가입이 완료되었습니다! 이메일을 확인해주세요.', 'success')
+                        setTimeout(() => {
+                            window.location.href = 'login.html'
+                        }, 2000)
+                    } else {
+                        showMessage(result.error, 'error')
+                    }
+                } else {
+                    showMessage('인증 시스템을 불러오는 중 오류가 발생했습니다.', 'error')
+                }
+            } catch (error) {
+                console.error('회원가입 오류:', error)
+                showMessage('회원가입 중 오류가 발생했습니다.', 'error')
+            } finally {
+                // 로딩 상태 해제
+                signupBtn.disabled = false
+                btnText.style.display = 'inline'
+                btnLoading.style.display = 'none'
+            }
+        })
+
+        // 실시간 유효성 검사
+        document.getElementById('fullName').addEventListener('input', function() {
+            const value = this.value.trim()
+            if (value && value.length < 2) {
+                this.setCustomValidity('이름은 최소 2자 이상 입력해주세요.')
+            } else {
+                this.setCustomValidity('')
+            }
+        })
+
+        document.getElementById('email').addEventListener('input', function() {
+            const value = this.value.trim()
+            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+            if (value && !emailRegex.test(value)) {
+                this.setCustomValidity('올바른 이메일 형식을 입력해주세요.')
+            } else {
+                this.setCustomValidity('')
+            }
+        })
+
+        document.getElementById('password').addEventListener('input', function() {
+            const value = this.value
+            const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{6,}$/
+            
+            if (value && value.length < 6) {
+                this.setCustomValidity('비밀번호는 최소 6자 이상이어야 합니다.')
+            } else if (value && !passwordRegex.test(value)) {
+                this.setCustomValidity('비밀번호는 영문자와 숫자를 포함해야 합니다.')
+            } else {
+                this.setCustomValidity('')
+            }
+            
+            // 비밀번호 확인 필드도 다시 검사
+            const confirmPassword = document.getElementById('confirmPassword')
+            if (confirmPassword.value) {
+                confirmPassword.dispatchEvent(new Event('input'))
+            }
+        })
+
+        // 비밀번호 확인 실시간 검사
+        document.getElementById('confirmPassword').addEventListener('input', function() {
+            const password = document.getElementById('password').value
+            const confirmPassword = this.value
+            
+            if (confirmPassword && password !== confirmPassword) {
+                this.setCustomValidity('비밀번호가 일치하지 않습니다.')
+            } else {
+                this.setCustomValidity('')
+            }
+        })
+
+        function showMessage(message, type) {
+            const messageDiv = document.getElementById('message')
+            messageDiv.textContent = message
+            messageDiv.className = `message ${type}`
+            messageDiv.style.display = 'block'
+            
+            // 5초 후 메시지 숨기기 (회원가입은 조금 더 길게)
+            setTimeout(() => {
+                messageDiv.style.display = 'none'
+            }, 5000)
+        }
+
+        // 페이지 로드 시 이미 로그인된 사용자 확인
+        document.addEventListener('DOMContentLoaded', async function() {
+            if (window.Auth) {
+                const user = await Auth.getCurrentUser()
+                if (user) {
+                    // 이미 로그인된 경우 메인 페이지로 리다이렉트
+                    window.location.href = '../index.html'
+                }
+            }
+        })
+    </script>
+</body>
+</html> 

@@ -13,26 +13,34 @@ window.supabaseClient = supabaseClient
 const SupabaseUtils = {
     // 현재 사용자 가져오기
     async getCurrentUser() {
-        // 테스트 모드에서는 localStorage에서 사용자 정보 반환
-        const testLoggedIn = localStorage.getItem('test_logged_in')
-        if (testLoggedIn === 'true') {
-            const testUserEmail = localStorage.getItem('test_user_email')
-            return {
-                id: 'test-user-id',
-                email: testUserEmail || 'test@example.com'
-            }
-        }
-        
-        // 실제 Supabase 호출
+        // 실제 Supabase 호출을 우선으로 시도
         try {
             const { data: { user }, error } = await supabaseClient.auth.getUser()
             if (error) {
                 console.error('사용자 정보 가져오기 오류:', error)
+                // 오류가 발생했을 때만 테스트 모드 확인
+                const testLoggedIn = localStorage.getItem('test_logged_in')
+                if (testLoggedIn === 'true') {
+                    const testUserEmail = localStorage.getItem('test_user_email')
+                    return {
+                        id: 'test-user-id',
+                        email: testUserEmail || 'test@example.com'
+                    }
+                }
                 return null
             }
             return user
         } catch (error) {
             console.error('사용자 정보 가져오기 실패:', error)
+            // 네트워크 오류 등의 경우에만 테스트 모드 확인
+            const testLoggedIn = localStorage.getItem('test_logged_in')
+            if (testLoggedIn === 'true') {
+                const testUserEmail = localStorage.getItem('test_user_email')
+                return {
+                    id: 'test-user-id',
+                    email: testUserEmail || 'test@example.com'
+                }
+            }
             return null
         }
     },
@@ -62,19 +70,18 @@ const SupabaseUtils = {
 
     // 로그인 상태 확인
     async isLoggedIn() {
-        // 테스트 모드에서는 localStorage 확인
-        const testLoggedIn = localStorage.getItem('test_logged_in')
-        console.log('localStorage test_logged_in:', testLoggedIn)
-        if (testLoggedIn === 'true') {
-            console.log('테스트 모드 로그인 상태: true')
-            return true
-        }
-        
-        // 실제 Supabase 확인
+        // 실제 Supabase 확인을 우선으로 시도
         try {
             const { data: { session }, error } = await supabaseClient.auth.getSession()
             if (error) {
                 console.error('세션 확인 오류:', error)
+                // 오류가 발생했을 때만 테스트 모드 확인
+                const testLoggedIn = localStorage.getItem('test_logged_in')
+                console.log('localStorage test_logged_in:', testLoggedIn)
+                if (testLoggedIn === 'true') {
+                    console.log('테스트 모드 로그인 상태: true')
+                    return true
+                }
                 return false
             }
             
@@ -85,6 +92,13 @@ const SupabaseUtils = {
             return isReallyLoggedIn
         } catch (error) {
             console.error('로그인 상태 확인 실패:', error)
+            // 네트워크 오류 등의 경우에만 테스트 모드 확인
+            const testLoggedIn = localStorage.getItem('test_logged_in')
+            console.log('localStorage test_logged_in:', testLoggedIn)
+            if (testLoggedIn === 'true') {
+                console.log('테스트 모드 로그인 상태: true')
+                return true
+            }
             return false
         }
     },

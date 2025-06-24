@@ -107,12 +107,10 @@ const Auth = {
         try {
             console.log('로그인 시도:', { email })
             
-            // 테스트 모드 확인
-            const isTestMode = localStorage.getItem('test_logged_in') !== null
+            // 실제 Supabase 호출을 우선으로 시도
+            console.log('실제 Supabase 로그인 시도...')
             
-            if (!isTestMode) {
-                // 실제 Supabase 호출
-                console.log('실제 Supabase 로그인 시도...')
+            try {
                 const { data, error } = await supabaseClient.auth.signInWithPassword({
                     email: email,
                     password: password
@@ -152,20 +150,31 @@ const Auth = {
                         errorMessage = '세션이 만료되었습니다. 다시 로그인해주세요.'
                     }
                     
-                    SupabaseUtils.showError(errorMessage)
-                    return { success: false, error: errorMessage }
+                    throw new Error(errorMessage)
                 }
 
                 console.log('Supabase 로그인 성공:', data)
                 SupabaseUtils.showSuccess('로그인되었습니다!')
                 return { success: true, user: data.user }
-            } else {
-                // 테스트 모드 로그인
-                console.log('테스트 모드 로그인')
-                localStorage.setItem('test_logged_in', 'true')
-                localStorage.setItem('test_user_email', email)
-                SupabaseUtils.showSuccess('테스트 모드 로그인되었습니다!')
-                return { success: true, user: { email, id: 'test-user-id' } }
+                
+            } catch (supabaseError) {
+                console.error('Supabase 로그인 실패, 테스트 모드 확인 중...', supabaseError)
+                
+                // Supabase 실패 시에만 테스트 모드 확인
+                const isTestMode = localStorage.getItem('test_logged_in') !== null
+                
+                if (isTestMode) {
+                    // 테스트 모드 로그인
+                    console.log('테스트 모드 로그인')
+                    localStorage.setItem('test_logged_in', 'true')
+                    localStorage.setItem('test_user_email', email)
+                    SupabaseUtils.showSuccess('테스트 모드 로그인되었습니다!')
+                    return { success: true, user: { email, id: 'test-user-id' } }
+                }
+                
+                // 테스트 모드도 아니면 오류 처리
+                SupabaseUtils.showError(supabaseError.message)
+                return { success: false, error: supabaseError.message }
             }
         } catch (error) {
             const message = SupabaseUtils.handleError(error)

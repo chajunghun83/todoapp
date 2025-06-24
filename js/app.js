@@ -100,65 +100,73 @@ const TodoApp = {
                 SupabaseUtils.showLoading(todoListElement)
             }
 
-            // 테스트 모드에서는 더미 데이터 사용
-            const testLoggedIn = localStorage.getItem('test_logged_in')
-            if (testLoggedIn === 'true') {
-                console.log('테스트 모드: 더미 Todo 데이터 로드')
-                // 더미 Todo 데이터
-                this.todos = [
-                    {
-                        id: '1',
-                        title: '테스트 할 일 1',
-                        description: '이것은 테스트용 할 일입니다.',
-                        completed: false,
-                        progress: 30,
-                        start_date: new Date().toISOString(), // 오늘
-                        due_date: new Date(Date.now() + 86400000).toISOString(), // 내일
-                        created_at: new Date().toISOString(),
-                        user_id: 'test-user-id'
-                    },
-                    {
-                        id: '2',
-                        title: '테스트 할 일 2',
-                        description: '완료된 테스트 할 일입니다.',
-                        completed: true,
-                        progress: 100,
-                        start_date: new Date(Date.now() - 172800000).toISOString(), // 이틀 전
-                        due_date: new Date(Date.now() - 86400000).toISOString(), // 어제
-                        created_at: new Date(Date.now() - 86400000).toISOString(), // 어제
-                        user_id: 'test-user-id'
-                    }
-                ]
-                this.renderTodos()
-                return
-            }
-
-            // 실제 Supabase 호출
+            // 실제 Supabase 호출을 우선으로 시도
             console.log('실제 Supabase에서 Todo 데이터 로드 중...', 'User ID:', user.id)
             
-            const { data, error } = await supabaseClient
-                .from('todos')
-                .select('*')
-                .eq('user_id', user.id)
-                .order('created_at', { ascending: false })
+            try {
+                const { data, error } = await supabaseClient
+                    .from('todos')
+                    .select('*')
+                    .eq('user_id', user.id)
+                    .order('created_at', { ascending: false })
 
-            if (error) {
-                console.error('Supabase Todo 로드 오류:', error)
+                if (error) {
+                    console.error('Supabase Todo 로드 오류:', error)
+                    
+                    // 테이블이 없는 경우 빈 배열로 처리
+                    if (error.code === 'PGRST116') {
+                        console.log('todos 테이블이 없음 - 빈 목록 표시')
+                        this.todos = []
+                        this.renderTodos()
+                        return
+                    }
+                    
+                    throw error
+                }
+
+                console.log('Supabase에서 로드된 Todo 데이터:', data)
+                this.todos = data || []
+                this.renderTodos()
+                return
+            } catch (supabaseError) {
+                console.error('Supabase 연결 실패, 테스트 모드 확인 중...', supabaseError)
                 
-                // 테이블이 없는 경우 빈 배열로 처리
-                if (error.code === 'PGRST116') {
-                    console.log('todos 테이블이 없음 - 빈 목록 표시')
-                    this.todos = []
+                // Supabase 실패 시에만 테스트 모드 확인
+                const testLoggedIn = localStorage.getItem('test_logged_in')
+                if (testLoggedIn === 'true') {
+                    console.log('테스트 모드: 더미 Todo 데이터 로드')
+                    // 더미 Todo 데이터
+                    this.todos = [
+                        {
+                            id: '1',
+                            title: '테스트 할 일 1',
+                            description: '이것은 테스트용 할 일입니다.',
+                            completed: false,
+                            progress: 30,
+                            start_date: new Date().toISOString(), // 오늘
+                            due_date: new Date(Date.now() + 86400000).toISOString(), // 내일
+                            created_at: new Date().toISOString(),
+                            user_id: 'test-user-id'
+                        },
+                        {
+                            id: '2',
+                            title: '테스트 할 일 2',
+                            description: '완료된 테스트 할 일입니다.',
+                            completed: true,
+                            progress: 100,
+                            start_date: new Date(Date.now() - 172800000).toISOString(), // 이틀 전
+                            due_date: new Date(Date.now() - 86400000).toISOString(), // 어제
+                            created_at: new Date(Date.now() - 86400000).toISOString(), // 어제
+                            user_id: 'test-user-id'
+                        }
+                    ]
                     this.renderTodos()
                     return
                 }
                 
-                throw error
+                // 테스트 모드도 아니면 오류 처리
+                throw supabaseError
             }
-
-            console.log('Supabase에서 로드된 Todo 데이터:', data)
-            this.todos = data || []
-            this.renderTodos()
         } catch (error) {
             console.error('Todo 로드 실패:', error)
             
@@ -312,25 +320,62 @@ const TodoApp = {
                 return
             }
 
-            // 테스트 모드에서는 로컬 배열에 추가
-            const testLoggedIn = localStorage.getItem('test_logged_in')
-            console.log('테스트 모드 상태:', testLoggedIn)
+            // 실제 Supabase 호출을 우선으로 시도
+            console.log('=== 실제 Supabase에 Todo 추가 시작 ===')
+            console.log('추가할 데이터:', todoData)
             
-            if (testLoggedIn === 'true') {
-                console.log('테스트 모드: Todo 추가')
-                const newTodo = {
-                    ...todoData,
-                    id: Date.now().toString(), // 간단한 ID 생성
-                    created_at: new Date().toISOString(),
-                    start_date: formData.get('start_date') || null,
-                    progress: parseInt(formData.get('progress')) || 0 // 진행률도 포함
-                }
-                console.log('테스트 모드에서 추가할 Todo:', newTodo)
-                this.todos.unshift(newTodo) // 배열 맨 앞에 추가
-                console.log('현재 todos 배열:', this.todos)
-                this.renderTodos()
+            try {
+                // 먼저 현재 사용자의 인증 상태 재확인
+                console.log('사용자 인증 상태 재확인...')
+                const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession()
                 
-                SupabaseUtils.showSuccess('할 일이 추가되었습니다! (테스트 모드)')
+                console.log('세션 데이터:', session)
+                console.log('세션 오류:', sessionError)
+                
+                if (sessionError || !session) {
+                    console.error('세션 오류:', sessionError)
+                    throw new Error('로그인 세션이 만료되었습니다.')
+                }
+                
+                console.log('세션 확인 완료. 사용자 ID:', session.user.id)
+                
+                // 실제 세션의 사용자 ID 사용
+                todoData.user_id = session.user.id
+                
+                // 완전한 데이터로 삽입 시도
+                const completeTodoData = {
+                    title: todoData.title,
+                    description: todoData.description,
+                    start_date: formData.get('start_date') || null,
+                    due_date: todoData.due_date,
+                    completed: false,
+                    progress: parseInt(formData.get('progress')) || 0,
+                    user_id: todoData.user_id
+                }
+                
+                console.log('=== Supabase 삽입 시도 ===')
+                console.log('완전한 데이터:', completeTodoData)
+                
+                const { data, error } = await supabaseClient
+                    .from('todos')
+                    .insert([completeTodoData])
+                    .select() // 추가된 데이터 반환
+
+                console.log('=== Supabase 응답 ===')
+                console.log('응답 데이터:', data)
+                console.log('응답 오류:', error)
+
+                if (error) {
+                    console.error('=== Supabase Todo 추가 오류 상세 ===')
+                    console.error('오류 객체:', error)
+                    console.error('오류 코드:', error.code)
+                    console.error('오류 메시지:', error.message)
+                    throw error
+                }
+
+                console.log('=== Todo 추가 성공 ===')
+                console.log('추가된 데이터:', data)
+                SupabaseUtils.showSuccess('할 일이 추가되었습니다!')
                 
                 // 모달 닫기
                 if (typeof closeAddModal === 'function') {
@@ -340,132 +385,60 @@ const TodoApp = {
                     const progressDisplay = document.getElementById('progress-display')
                     if (progressDisplay) progressDisplay.textContent = '0%'
                 }
+                
+                console.log('할일 목록 다시 로드 시작...')
+                await this.loadTodos()
+                console.log('할일 목록 다시 로드 완료')
                 return
-            }
-
-            // 실제 Supabase 호출
-            console.log('=== 실제 Supabase에 Todo 추가 시작 ===')
-            console.log('추가할 데이터:', todoData)
-            
-            // 먼저 현재 사용자의 인증 상태 재확인
-            console.log('사용자 인증 상태 재확인...')
-            const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession()
-            
-            console.log('세션 데이터:', session)
-            console.log('세션 오류:', sessionError)
-            
-            if (sessionError || !session) {
-                console.error('세션 오류:', sessionError)
-                SupabaseUtils.showError('로그인 세션이 만료되었습니다. 다시 로그인해주세요.')
-                return
-            }
-            
-            console.log('세션 확인 완료. 사용자 ID:', session.user.id)
-            
-            // 실제 세션의 사용자 ID 사용
-            todoData.user_id = session.user.id
-            
-            // 테이블 존재 여부 확인
-            console.log('Supabase 테이블 확인 중...')
-            const { data: tableCheck, error: tableError } = await supabaseClient
-                .from('todos')
-                .select('count', { count: 'exact', head: true })
-            
-            console.log('테이블 확인 결과:', tableCheck)
-            console.log('테이블 확인 오류:', tableError)
-            
-            if (tableError) {
-                console.error('테이블 확인 오류:', tableError)
-                if (tableError.code === 'PGRST116') {
-                    SupabaseUtils.showError('todos 테이블이 존재하지 않습니다. 데이터베이스 설정을 확인해주세요.')
+                
+            } catch (supabaseError) {
+                console.error('Supabase 연결 실패, 테스트 모드 확인 중...', supabaseError)
+                
+                // Supabase 실패 시에만 테스트 모드 확인
+                const testLoggedIn = localStorage.getItem('test_logged_in')
+                console.log('테스트 모드 상태:', testLoggedIn)
+                
+                if (testLoggedIn === 'true') {
+                    console.log('테스트 모드: Todo 추가')
+                    const newTodo = {
+                        ...todoData,
+                        id: Date.now().toString(), // 간단한 ID 생성
+                        created_at: new Date().toISOString(),
+                        start_date: formData.get('start_date') || null,
+                        progress: parseInt(formData.get('progress')) || 0 // 진행률도 포함
+                    }
+                    console.log('테스트 모드에서 추가할 Todo:', newTodo)
+                    this.todos.unshift(newTodo) // 배열 맨 앞에 추가
+                    console.log('현재 todos 배열:', this.todos)
+                    this.renderTodos()
+                    
+                    SupabaseUtils.showSuccess('할 일이 추가되었습니다! (테스트 모드)')
+                    
+                    // 모달 닫기
+                    if (typeof closeAddModal === 'function') {
+                        closeAddModal()
+                    } else {
+                        event.target.reset()
+                        const progressDisplay = document.getElementById('progress-display')
+                        if (progressDisplay) progressDisplay.textContent = '0%'
+                    }
                     return
                 }
-            }
-            
-            console.log('테이블 확인 완료')
-            
-            // 완전한 데이터로 삽입 시도
-            const completeTodoData = {
-                title: todoData.title,
-                description: todoData.description,
-                start_date: formData.get('start_date') || null,
-                due_date: todoData.due_date,
-                completed: false,
-                progress: parseInt(formData.get('progress')) || 0,
-                user_id: todoData.user_id
-            }
-            
-            console.log('=== Supabase 삽입 시도 ===')
-            console.log('완전한 데이터:', completeTodoData)
-            
-            const { data, error } = await supabaseClient
-                .from('todos')
-                .insert([completeTodoData])
-                .select() // 추가된 데이터 반환
-
-            console.log('=== Supabase 응답 ===')
-            console.log('응답 데이터:', data)
-            console.log('응답 오류:', error)
-
-            if (error) {
-                console.error('=== Supabase Todo 추가 오류 상세 ===')
-                console.error('오류 객체:', error)
-                console.error('오류 코드:', error.code)
-                console.error('오류 메시지:', error.message)
-                console.error('오류 세부사항:', error.details)
-                console.error('오류 힌트:', error.hint)
-                console.error('추가하려던 데이터:', completeTodoData)
                 
-                // 데이터베이스 관련 오류인 경우 테스트 모드 제안
-                if (error.code === '23503' || error.code === 'PGRST116' || error.code === '42501') {
-                    // 자동으로 테스트 모드 제안 모달 표시
-                    const shouldUseTestMode = confirm(`할 일 추가에 실패했습니다.
-
-데이터베이스 설정 문제로 보입니다.
-지금 바로 테스트 모드로 전환하시겠습니까?
-
-테스트 모드에서는 모든 기능을 정상적으로 사용할 수 있습니다.
-(데이터는 브라우저에만 저장되며, 새로고침 시 초기화됩니다)`)
-                    
-                    if (shouldUseTestMode) {
-                        toggleTestMode()
-                        // toggleTestMode가 자동으로 페이지를 새로고침하므로 별도 처리 불필요
-                        return
-                    }
-                }
-                
-                // 일반적인 오류 처리
-                const errorMessage = SupabaseUtils.handleError(error)
-                SupabaseUtils.showError(errorMessage)
-                throw error
+                // 테스트 모드도 아니면 오류 처리
+                throw supabaseError
             }
-
-            console.log('=== Todo 추가 성공 ===')
-            console.log('추가된 데이터:', data)
-            SupabaseUtils.showSuccess('할 일이 추가되었습니다!')
-            
-            // 모달 닫기
-            if (typeof closeAddModal === 'function') {
-                closeAddModal()
-            } else {
-                event.target.reset()
-                const progressDisplay = document.getElementById('progress-display')
-                if (progressDisplay) progressDisplay.textContent = '0%'
-            }
-            
-            console.log('할일 목록 다시 로드 시작...')
-            await this.loadTodos()
-            console.log('할일 목록 다시 로드 완료')
         } catch (error) {
             console.error('=== Todo 추가 최종 실패 ===')
             console.error('최종 오류:', error)
             
             // 데이터베이스 관련 오류인 경우 테스트 모드 제안
-            if (error.code === '23503' || error.code === 'PGRST116' || error.code === '42501') {
+            if (error.code === '23503' || error.code === 'PGRST116' || error.code === '42501' || 
+                error.message.includes('로그인 세션이 만료') || error.message.includes('Network error')) {
                 // 자동으로 테스트 모드 제안 모달 표시
                 const shouldUseTestMode = confirm(`할 일 추가에 실패했습니다.
 
-데이터베이스 설정 문제로 보입니다.
+데이터베이스 연결 또는 인증 문제로 보입니다.
 지금 바로 테스트 모드로 전환하시겠습니까?
 
 테스트 모드에서는 모든 기능을 정상적으로 사용할 수 있습니다.
@@ -476,14 +449,11 @@ const TodoApp = {
                     // toggleTestMode가 자동으로 페이지를 새로고침하므로 별도 처리 불필요
                     return
                 }
-                
-                SupabaseUtils.showError(`할 일 추가에 실패했습니다. 
-                
-데이터베이스 설정 문제로 보입니다.
-임시로 테스트 모드를 사용하시려면 화면 하단의 "테스트 모드로 전환" 버튼을 클릭하세요.`)
-            } else {
-                SupabaseUtils.showError('할 일 추가에 실패했습니다.')
             }
+            
+            // 일반적인 오류 처리
+            const errorMessage = SupabaseUtils.handleError(error)
+            SupabaseUtils.showError(errorMessage)
         }
     },
 

@@ -108,6 +108,15 @@ const SupabaseUtils = {
 
     // 로그인 상태 확인
     async isLoggedIn() {
+        // GitHub Pages 환경에서는 저장된 토큰 우선 확인
+        if (window.location.hostname.includes('github.io')) {
+            const tokenUser = DirectSupabaseAPI.getCurrentUserFromToken()
+            if (tokenUser) {
+                console.log('토큰 기반 로그인 상태: true')
+                return true
+            }
+        }
+        
         // 실제 Supabase 확인을 우선으로 시도
         try {
             const { data: { session }, error } = await supabaseClient.auth.getSession()

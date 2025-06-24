@@ -15,41 +15,31 @@ const Auth = {
                 }
                 
                 console.log('직접 API 회원가입 성공:', result.data)
-                SupabaseUtils.showSuccess('회원가입이 완료되었습니다! 이메일을 확인해주세요.')
+                SupabaseUtils.showSuccess('회원가입이 완료되었습니다!')
                 
-                // 이메일 확인 우선 안내
-                setTimeout(() => {
-                    const emailNotReceived = confirm(`회원가입이 완료되었습니다!
-
-${email}로 확인 이메일을 발송했습니다.
-이메일을 확인하여 계정을 활성화해주세요.
-
-📧 이메일이 오지 않았나요?
-- 스팸함을 확인해보세요
-- 이메일 주소가 정확한지 확인해보세요
-
-그래도 이메일이 오지 않는다면 "확인"을 눌러 임시로 로그인하시겠습니까?`)
-                    
-                    if (emailNotReceived) {
-                        console.log('이메일 확인 우회 - 임시 로그인 시도')
-                        // 임시 로그인 시도
-                        this.signIn(email, password).then(loginResult => {
-                            if (loginResult.success) {
-                                SupabaseUtils.showSuccess('임시 로그인되었습니다! 나중에 이메일을 확인해주세요.')
-                                setTimeout(() => {
-                                    window.location.href = '../index.html'
-                                }, 1500)
-                            } else {
-                                SupabaseUtils.showError('임시 로그인에 실패했습니다. 이메일 확인을 기다려주세요.')
-                            }
-                        })
+                // 회원가입 후 바로 로그인 시도
+                console.log('회원가입 완료 - 자동 로그인 시도')
+                try {
+                    const loginResult = await this.signIn(email, password)
+                    if (loginResult.success) {
+                        SupabaseUtils.showSuccess('회원가입 완료! 자동으로 로그인되었습니다.')
+                        setTimeout(() => {
+                            window.location.href = '../index.html'
+                        }, 1500)
                     } else {
-                        // 로그인 페이지로 이동
+                        // 자동 로그인 실패 시 로그인 페이지로 이동
+                        SupabaseUtils.showSuccess('회원가입이 완료되었습니다. 로그인해주세요.')
                         setTimeout(() => {
                             window.location.href = 'login.html'
                         }, 2000)
                     }
-                }, 5000) // 5초 후에 안내
+                } catch (loginError) {
+                    console.error('자동 로그인 실패:', loginError)
+                    SupabaseUtils.showSuccess('회원가입이 완료되었습니다. 로그인해주세요.')
+                    setTimeout(() => {
+                        window.location.href = 'login.html'
+                    }, 2000)
+                }
                 
                 return { success: true, user: result.data.user }
             } else {
@@ -60,14 +50,40 @@ ${email}로 확인 이메일을 발송했습니다.
                     options: {
                         data: {
                             full_name: fullName
-                        }
+                        },
+                        emailRedirectTo: undefined // 이메일 확인 비활성화
                     }
                 })
 
                 if (error) throw error
 
                 console.log('Supabase 회원가입 성공:', data)
-                SupabaseUtils.showSuccess('회원가입이 완료되었습니다! 이메일을 확인해주세요.')
+                SupabaseUtils.showSuccess('회원가입이 완료되었습니다!')
+                
+                // 회원가입 후 바로 로그인 시도
+                console.log('회원가입 완료 - 자동 로그인 시도')
+                try {
+                    const loginResult = await this.signIn(email, password)
+                    if (loginResult.success) {
+                        SupabaseUtils.showSuccess('회원가입 완료! 자동으로 로그인되었습니다.')
+                        setTimeout(() => {
+                            window.location.href = '../index.html'
+                        }, 1500)
+                    } else {
+                        // 자동 로그인 실패 시 로그인 페이지로 이동
+                        SupabaseUtils.showSuccess('회원가입이 완료되었습니다. 로그인해주세요.')
+                        setTimeout(() => {
+                            window.location.href = 'login.html'
+                        }, 2000)
+                    }
+                } catch (loginError) {
+                    console.error('자동 로그인 실패:', loginError)
+                    SupabaseUtils.showSuccess('회원가입이 완료되었습니다. 로그인해주세요.')
+                    setTimeout(() => {
+                        window.location.href = 'login.html'
+                    }, 2000)
+                }
+                
                 return { success: true, user: data.user }
             }
         } catch (error) {

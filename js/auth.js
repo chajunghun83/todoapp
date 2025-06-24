@@ -5,87 +5,48 @@ const Auth = {
         try {
             console.log('회원가입 시도:', { email, fullName })
             
-            // GitHub Pages 환경에서는 직접 API 호출 사용
-            if (window.location.hostname.includes('github.io')) {
-                console.log('GitHub Pages 환경 - 직접 API 호출로 회원가입')
-                const result = await DirectSupabaseAPI.signUp(email, password)
-                
-                if (result.error) {
-                    throw result.error
-                }
-                
-                console.log('직접 API 회원가입 성공:', result.data)
-                SupabaseUtils.showSuccess('회원가입이 완료되었습니다!')
-                
-                // 회원가입 후 바로 로그인 시도
-                console.log('회원가입 완료 - 자동 로그인 시도')
-                try {
-                    const loginResult = await this.signIn(email, password)
-                    if (loginResult.success) {
-                        SupabaseUtils.showSuccess('회원가입 완료! 자동으로 로그인되었습니다.')
-                        setTimeout(() => {
-                            window.location.href = '../index.html'
-                        }, 1500)
-                    } else {
-                        // 자동 로그인 실패 시 로그인 페이지로 이동
-                        SupabaseUtils.showSuccess('회원가입이 완료되었습니다. 로그인해주세요.')
-                        setTimeout(() => {
-                            window.location.href = 'login.html'
-                        }, 2000)
-                    }
-                } catch (loginError) {
-                    console.error('자동 로그인 실패:', loginError)
-                    SupabaseUtils.showSuccess('회원가입이 완료되었습니다. 로그인해주세요.')
-                    setTimeout(() => {
-                        window.location.href = 'login.html'
-                    }, 2000)
-                }
-                
-                return { success: true, user: result.data.user }
-            } else {
-                // 로컬 환경에서는 Supabase 클라이언트 사용
-                const { data, error } = await supabaseClient.auth.signUp({
-                    email: email,
-                    password: password,
-                    options: {
-                        data: {
-                            full_name: fullName
-                        },
-                        emailRedirectTo: undefined // 이메일 확인 비활성화
-                    }
-                })
-
-                if (error) throw error
-
-                console.log('Supabase 회원가입 성공:', data)
-                SupabaseUtils.showSuccess('회원가입이 완료되었습니다!')
-                
-                // 회원가입 후 바로 로그인 시도
-                console.log('회원가입 완료 - 자동 로그인 시도')
-                try {
-                    const loginResult = await this.signIn(email, password)
-                    if (loginResult.success) {
-                        SupabaseUtils.showSuccess('회원가입 완료! 자동으로 로그인되었습니다.')
-                        setTimeout(() => {
-                            window.location.href = '../index.html'
-                        }, 1500)
-                    } else {
-                        // 자동 로그인 실패 시 로그인 페이지로 이동
-                        SupabaseUtils.showSuccess('회원가입이 완료되었습니다. 로그인해주세요.')
-                        setTimeout(() => {
-                            window.location.href = 'login.html'
-                        }, 2000)
-                    }
-                } catch (loginError) {
-                    console.error('자동 로그인 실패:', loginError)
-                    SupabaseUtils.showSuccess('회원가입이 완료되었습니다. 로그인해주세요.')
-                    setTimeout(() => {
-                        window.location.href = 'login.html'
-                    }, 2000)
-                }
-                
-                return { success: true, user: data.user }
+            // 임시로 모든 환경에서 직접 API 호출 사용 (디버깅용)
+            console.log('직접 API 호출로 회원가입 시도')
+            const result = await DirectSupabaseAPI.signUp(email, password, fullName)
+            
+            if (result.error) {
+                throw result.error
             }
+            
+            console.log('직접 API 회원가입 성공:', result.data)
+            SupabaseUtils.showSuccess('회원가입이 완료되었습니다!')
+            
+            // 회원가입 후 바로 로그인 시도
+            console.log('회원가입 완료 - 자동 로그인 시도')
+            try {
+                const loginResult = await this.signIn(email, password)
+                if (loginResult.success) {
+                    // 로그인 성공 후 프로필 생성
+                    console.log('로그인 성공 - 프로필 생성 시도')
+                    if (loginResult.user && loginResult.user.id) {
+                        await DirectSupabaseAPI.createProfile(loginResult.user.id, email, fullName)
+                    }
+                    
+                    SupabaseUtils.showSuccess('회원가입 완료! 자동으로 로그인되었습니다.')
+                    setTimeout(() => {
+                        window.location.href = '../index.html'
+                    }, 1500)
+                } else {
+                    // 자동 로그인 실패 시 로그인 페이지로 이동
+                    SupabaseUtils.showSuccess('회원가입이 완료되었습니다. 로그인해주세요.')
+                    setTimeout(() => {
+                        window.location.href = 'login.html'
+                    }, 2000)
+                }
+            } catch (loginError) {
+                console.error('자동 로그인 실패:', loginError)
+                SupabaseUtils.showSuccess('회원가입이 완료되었습니다. 로그인해주세요.')
+                setTimeout(() => {
+                    window.location.href = 'login.html'
+                }, 2000)
+            }
+            
+            return { success: true, user: result.data.user }
         } catch (error) {
             const message = SupabaseUtils.handleError(error)
             console.error('회원가입 오류:', message)
@@ -105,21 +66,11 @@ const Auth = {
             try {
                 let data, error
                 
-                // GitHub Pages 환경에서는 직접 API 호출 사용
-                if (window.location.hostname.includes('github.io')) {
-                    console.log('GitHub Pages 환경 - 직접 API 호출로 로그인')
-                    const result = await DirectSupabaseAPI.signIn(email, password)
-                    data = result.data
-                    error = result.error
-                } else {
-                    // 로컬 환경에서는 Supabase 클라이언트 사용
-                    const result = await supabaseClient.auth.signInWithPassword({
-                        email: email,
-                        password: password
-                    })
-                    data = result.data
-                    error = result.error
-                }
+                // 모든 환경에서 직접 API 호출 사용 (토큰 저장을 위해)
+                console.log('직접 API 호출로 로그인')
+                const result = await DirectSupabaseAPI.signIn(email, password)
+                data = result.data
+                error = result.error
 
                 if (error) {
                     console.error('Supabase 로그인 오류:', error)
@@ -329,14 +280,14 @@ const Auth = {
                         // 실제 Supabase 사용자
                         const user = await SupabaseUtils.getCurrentUser()
                         if (user) {
-                            // 이름 우선순위: 1) 프로필 full_name, 2) 사용자 메타데이터 full_name, 3) 이메일
+                            // 이름 우선순위: 1) 프로필 name, 2) 사용자 메타데이터 full_name, 3) 이메일
                             let displayName = user.email
                             
                             try {
-                                // 1순위: 프로필 테이블에서 full_name 조회
-                                const profile = await this.getProfile(user.id)
-                                if (profile && profile.full_name) {
-                                    displayName = profile.full_name
+                                // 1순위: 프로필 테이블에서 name 조회
+                                const profileResult = await DirectSupabaseAPI.getProfile(user.id)
+                                if (profileResult.data && profileResult.data.name) {
+                                    displayName = profileResult.data.name
                                     console.log('프로필에서 이름 조회 성공:', displayName)
                                 } else {
                                     // 2순위: 사용자 메타데이터에서 full_name 조회
@@ -375,6 +326,7 @@ const Auth = {
     },
 
     validateEmail(email) {
+        // 기본적인 이메일 형태 체크 (@ 포함하고 도메인 형태)
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         return emailRegex.test(email)
     },

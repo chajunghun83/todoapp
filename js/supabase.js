@@ -42,45 +42,25 @@ window.supabaseClient = supabaseClient
 const SupabaseUtils = {
     // 현재 사용자 가져오기
     async getCurrentUser() {
-        // GitHub Pages 환경에서는 저장된 토큰 우선 확인
-        if (window.location.hostname.includes('github.io')) {
-            const tokenUser = DirectSupabaseAPI.getCurrentUserFromToken()
-            if (tokenUser) {
-                console.log('토큰에서 사용자 정보 반환:', tokenUser)
-                return tokenUser
+        // 모든 환경에서 저장된 토큰 우선 확인 (DirectSupabaseAPI 사용하므로)
+        const tokenUser = DirectSupabaseAPI.getCurrentUserFromToken()
+        if (tokenUser) {
+            console.log('토큰에서 사용자 정보 반환:', tokenUser)
+            return tokenUser
+        }
+        
+        // 토큰이 없으면 테스트 모드 확인
+        const testLoggedIn = localStorage.getItem('test_logged_in')
+        if (testLoggedIn === 'true') {
+            const testUserEmail = localStorage.getItem('test_user_email')
+            return {
+                id: 'test-user-id',
+                email: testUserEmail || 'test@example.com'
             }
         }
         
-        // 실제 Supabase 호출을 우선으로 시도
-        try {
-            const { data: { user }, error } = await supabaseClient.auth.getUser()
-            if (error) {
-                console.error('사용자 정보 가져오기 오류:', error)
-                // 오류가 발생했을 때만 테스트 모드 확인
-                const testLoggedIn = localStorage.getItem('test_logged_in')
-                if (testLoggedIn === 'true') {
-                    const testUserEmail = localStorage.getItem('test_user_email')
-                    return {
-                        id: 'test-user-id',
-                        email: testUserEmail || 'test@example.com'
-                    }
-                }
-                return null
-            }
-            return user
-        } catch (error) {
-            console.error('사용자 정보 가져오기 실패:', error)
-            // 네트워크 오류 등의 경우에만 테스트 모드 확인
-            const testLoggedIn = localStorage.getItem('test_logged_in')
-            if (testLoggedIn === 'true') {
-                const testUserEmail = localStorage.getItem('test_user_email')
-                return {
-                    id: 'test-user-id',
-                    email: testUserEmail || 'test@example.com'
-                }
-            }
-            return null
-        }
+        console.log('사용자 정보 없음 (토큰과 테스트 모드 모두 없음)')
+        return null
     },
 
     // Supabase 연결 테스트
@@ -108,46 +88,23 @@ const SupabaseUtils = {
 
     // 로그인 상태 확인
     async isLoggedIn() {
-        // GitHub Pages 환경에서는 저장된 토큰 우선 확인
-        if (window.location.hostname.includes('github.io')) {
-            const tokenUser = DirectSupabaseAPI.getCurrentUserFromToken()
-            if (tokenUser) {
-                console.log('토큰 기반 로그인 상태: true')
-                return true
-            }
+        // 모든 환경에서 저장된 토큰 우선 확인 (DirectSupabaseAPI 사용하므로)
+        const tokenUser = DirectSupabaseAPI.getCurrentUserFromToken()
+        if (tokenUser) {
+            console.log('토큰 기반 로그인 상태: true')
+            return true
         }
         
-        // 실제 Supabase 확인을 우선으로 시도
-        try {
-            const { data: { session }, error } = await supabaseClient.auth.getSession()
-            if (error) {
-                console.error('세션 확인 오류:', error)
-                // 오류가 발생했을 때만 테스트 모드 확인
-                const testLoggedIn = localStorage.getItem('test_logged_in')
-                console.log('localStorage test_logged_in:', testLoggedIn)
-                if (testLoggedIn === 'true') {
-                    console.log('테스트 모드 로그인 상태: true')
-                    return true
-                }
-                return false
-            }
-            
-            const isReallyLoggedIn = !!(session && session.user)
-            console.log('실제 Supabase 로그인 상태:', isReallyLoggedIn)
-            console.log('세션 정보:', session ? '존재' : '없음')
-            
-            return isReallyLoggedIn
-        } catch (error) {
-            console.error('로그인 상태 확인 실패:', error)
-            // 네트워크 오류 등의 경우에만 테스트 모드 확인
-            const testLoggedIn = localStorage.getItem('test_logged_in')
-            console.log('localStorage test_logged_in:', testLoggedIn)
-            if (testLoggedIn === 'true') {
-                console.log('테스트 모드 로그인 상태: true')
-                return true
-            }
-            return false
+        // 토큰이 없으면 테스트 모드 확인
+        const testLoggedIn = localStorage.getItem('test_logged_in')
+        console.log('localStorage test_logged_in:', testLoggedIn)
+        if (testLoggedIn === 'true') {
+            console.log('테스트 모드 로그인 상태: true')
+            return true
         }
+        
+        console.log('로그인 상태: false (토큰과 테스트 모드 모두 없음)')
+        return false
     },
 
     // 세션 가져오기
@@ -268,18 +225,26 @@ const DirectSupabaseAPI = {
     async getTodos(userId) {
         try {
             console.log('직접 API 호출로 todos 조회:', userId)
+            
+            // 저장된 사용자 토큰 가져오기
+            const userToken = localStorage.getItem('supabase_access_token')
+            if (!userToken) {
+                throw new Error('로그인 토큰이 없습니다. 다시 로그인해주세요.')
+            }
+            
             const response = await fetch(`${SUPABASE_URL}/rest/v1/todos?user_id=eq.${userId}&select=*`, {
                 method: 'GET',
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Authorization': `Bearer ${userToken}`, // 사용자 토큰 사용
                     'Content-Type': 'application/json',
                     'Range': '0-999'
                 }
             })
             
             if (!response.ok) {
-                throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+                const errorText = await response.text()
+                throw new Error(`HTTP ${response.status}: ${errorText}`)
             }
             
             const data = await response.json()
@@ -295,11 +260,20 @@ const DirectSupabaseAPI = {
     async insertTodo(todoData) {
         try {
             console.log('직접 API 호출로 todo 추가:', todoData)
+            
+            // 저장된 사용자 토큰 가져오기
+            const userToken = localStorage.getItem('supabase_access_token')
+            if (!userToken) {
+                throw new Error('로그인 토큰이 없습니다. 다시 로그인해주세요.')
+            }
+            
+            console.log('사용자 토큰 사용:', userToken.substring(0, 50) + '...')
+            
             const response = await fetch(`${SUPABASE_URL}/rest/v1/todos`, {
                 method: 'POST',
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Authorization': `Bearer ${userToken}`, // 사용자 토큰 사용
                     'Content-Type': 'application/json',
                     'Prefer': 'return=representation'
                 },
@@ -325,11 +299,18 @@ const DirectSupabaseAPI = {
     async updateTodo(todoId, updates) {
         try {
             console.log('직접 API 호출로 todo 업데이트:', todoId, updates)
+            
+            // 저장된 사용자 토큰 가져오기
+            const userToken = localStorage.getItem('supabase_access_token')
+            if (!userToken) {
+                throw new Error('로그인 토큰이 없습니다. 다시 로그인해주세요.')
+            }
+            
             const response = await fetch(`${SUPABASE_URL}/rest/v1/todos?id=eq.${todoId}`, {
                 method: 'PATCH',
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Authorization': `Bearer ${userToken}`, // 사용자 토큰 사용
                     'Content-Type': 'application/json',
                     'Prefer': 'return=representation'
                 },
@@ -354,11 +335,18 @@ const DirectSupabaseAPI = {
     async deleteTodo(todoId) {
         try {
             console.log('직접 API 호출로 todo 삭제:', todoId)
+            
+            // 저장된 사용자 토큰 가져오기
+            const userToken = localStorage.getItem('supabase_access_token')
+            if (!userToken) {
+                throw new Error('로그인 토큰이 없습니다. 다시 로그인해주세요.')
+            }
+            
             const response = await fetch(`${SUPABASE_URL}/rest/v1/todos?id=eq.${todoId}`, {
                 method: 'DELETE',
                 headers: {
                     'apikey': SUPABASE_ANON_KEY,
-                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Authorization': `Bearer ${userToken}`, // 사용자 토큰 사용
                     'Content-Type': 'application/json'
                 }
             })
@@ -377,9 +365,25 @@ const DirectSupabaseAPI = {
     },
     
     // 직접 fetch로 회원가입
-    async signUp(email, password) {
+    async signUp(email, password, fullName) {
         try {
-            console.log('직접 API 호출로 회원가입:', email)
+            console.log('직접 API 호출로 회원가입:', email, fullName)
+            console.log('요청 URL:', `${SUPABASE_URL}/auth/v1/signup`)
+            console.log('요청 헤더:', {
+                'apikey': SUPABASE_ANON_KEY.substring(0, 20) + '...',
+                'Authorization': `Bearer ${SUPABASE_ANON_KEY.substring(0, 20)}...`,
+                'Content-Type': 'application/json'
+            })
+            
+            const requestBody = {
+                email: email,
+                password: password,
+                data: {
+                    full_name: fullName
+                }
+            }
+            console.log('요청 본문:', requestBody)
+            
             const response = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
                 method: 'POST',
                 headers: {
@@ -387,19 +391,57 @@ const DirectSupabaseAPI = {
                     'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({
-                    email: email,
-                    password: password
-                })
+                body: JSON.stringify(requestBody)
             })
             
+            console.log('응답 상태:', response.status)
+            console.log('응답 헤더:', Object.fromEntries(response.headers.entries()))
+            
             if (!response.ok) {
-                const errorData = await response.json()
-                console.error('회원가입 API 응답 오류:', response.status, errorData)
-                throw new Error(errorData.error_description || errorData.msg || '회원가입에 실패했습니다.')
+                const errorText = await response.text()
+                console.error('회원가입 API 응답 오류 (텍스트):', errorText)
+                
+                let errorData
+                try {
+                    errorData = JSON.parse(errorText)
+                } catch (parseError) {
+                    console.error('응답 JSON 파싱 실패:', parseError)
+                    throw new Error(`HTTP ${response.status}: ${errorText}`)
+                }
+                
+                console.error('회원가입 API 응답 오류 (JSON):', errorData)
+                
+                // 400 오류에 대한 더 구체적인 처리
+                if (response.status === 400) {
+                    if (errorData.msg && errorData.msg.includes('User already registered')) {
+                        throw new Error('이미 등록된 이메일입니다.')
+                    } else if (errorData.msg && errorData.msg.includes('Invalid email')) {
+                        throw new Error('올바르지 않은 이메일 형식입니다.')
+                    } else if (errorData.msg && errorData.msg.includes('Password')) {
+                        throw new Error('비밀번호는 최소 6자 이상이어야 합니다.')
+                    } else if (errorData.error_description) {
+                        throw new Error(errorData.error_description)
+                    } else if (errorData.msg) {
+                        throw new Error(errorData.msg)
+                    } else {
+                        throw new Error('회원가입 정보가 올바르지 않습니다.')
+                    }
+                }
+                
+                throw new Error(errorData.error_description || errorData.msg || `HTTP ${response.status} 오류`)
             }
             
-            const data = await response.json()
+            const responseText = await response.text()
+            console.log('회원가입 응답 텍스트:', responseText)
+            
+            let data
+            try {
+                data = JSON.parse(responseText)
+            } catch (parseError) {
+                console.error('응답 JSON 파싱 실패:', parseError)
+                throw new Error('서버 응답을 처리할 수 없습니다.')
+            }
+            
             console.log('직접 API 회원가입 성공:', data)
             return { data, error: null }
         } catch (error) {
@@ -463,6 +505,127 @@ const DirectSupabaseAPI = {
         }
         
         return null
+    },
+    
+    // 직접 fetch로 프로필 생성
+    async createProfile(userId, email, fullName) {
+        try {
+            console.log('직접 API 호출로 프로필 생성:', userId, email, fullName)
+            
+            // 저장된 사용자 토큰 가져오기
+            const userToken = localStorage.getItem('supabase_access_token')
+            if (!userToken) {
+                console.warn('토큰이 없어서 프로필 생성을 건너뜁니다.')
+                return { data: null, error: null }
+            }
+            
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${userToken}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify({
+                    id: userId,
+                    email: email,
+                    name: fullName
+                })
+            })
+            
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error('프로필 생성 API 오류:', response.status, errorText)
+                // 프로필 생성 실패는 치명적이지 않으므로 오류를 반환하지 않음
+                return { data: null, error: null }
+            }
+            
+            const data = await response.json()
+            console.log('직접 API 프로필 생성 성공:', data)
+            return { data, error: null }
+        } catch (error) {
+            console.error('직접 API 프로필 생성 실패:', error)
+            // 프로필 생성 실패는 치명적이지 않으므로 오류를 반환하지 않음
+            return { data: null, error: null }
+        }
+    },
+    
+    // 직접 fetch로 프로필 조회
+    async getProfile(userId) {
+        try {
+            console.log('직접 API 호출로 프로필 조회:', userId)
+            
+            // 저장된 사용자 토큰 가져오기
+            const userToken = localStorage.getItem('supabase_access_token')
+            if (!userToken) {
+                console.warn('토큰이 없어서 프로필 조회를 건너뜁니다.')
+                return { data: null, error: null }
+            }
+            
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}&select=*`, {
+                method: 'GET',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${userToken}`,
+                    'Content-Type': 'application/json',
+                    'Range': '0-1'
+                }
+            })
+            
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error('프로필 조회 API 오류:', response.status, errorText)
+                return { data: null, error: null }
+            }
+            
+            const data = await response.json()
+            console.log('직접 API 프로필 조회 성공:', data)
+            
+            // 배열에서 첫 번째 요소 반환 (단일 프로필)
+            const profile = data && data.length > 0 ? data[0] : null
+            return { data: profile, error: null }
+        } catch (error) {
+            console.error('직접 API 프로필 조회 실패:', error)
+            return { data: null, error: null }
+        }
+    },
+    
+    // 직접 fetch로 프로필 업데이트
+    async updateProfile(userId, updates) {
+        try {
+            console.log('직접 API 호출로 프로필 업데이트:', userId, updates)
+            
+            // 저장된 사용자 토큰 가져오기
+            const userToken = localStorage.getItem('supabase_access_token')
+            if (!userToken) {
+                throw new Error('로그인 토큰이 없습니다. 다시 로그인해주세요.')
+            }
+            
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/profiles?id=eq.${userId}`, {
+                method: 'PATCH',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${userToken}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(updates)
+            })
+            
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error('프로필 업데이트 API 오류:', response.status, errorText)
+                throw new Error(`HTTP ${response.status}: ${errorText}`)
+            }
+            
+            const data = await response.json()
+            console.log('직접 API 프로필 업데이트 성공:', data)
+            return { data, error: null }
+        } catch (error) {
+            console.error('직접 API 프로필 업데이트 실패:', error)
+            return { data: null, error }
+        }
     }
 }
 

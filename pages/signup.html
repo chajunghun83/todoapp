@@ -11,7 +11,9 @@
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
-                <h1>📝 Todo 앱</h1>
+                <div class="auth-logo">
+                    <img src="../assets/images/todoapp_img.png" alt="Todo 앱 로고" class="logo-image">
+                </div>
                 <h2>회원가입</h2>
                 <p>새 계정을 만들어 할 일 관리를 시작하세요</p>
             </div>
@@ -25,8 +27,9 @@
                 </div>
 
                 <div class="form-group">
-                    <label for="email">이메일 *</label>
-                    <input type="email" id="email" name="email" class="form-control" placeholder="이메일을 입력하세요" required>
+                    <label for="userEmail">이메일 *</label>
+                    <input type="text" id="userEmail" name="email" class="form-control" placeholder="이메일을 입력하세요 (예: user@example.com)" required autocomplete="email">
+                    <small class="form-text">계정 식별용 이메일 (실제 존재하는 이메일이 아니어도 됩니다)</small>
                 </div>
 
                 <div class="form-group">
@@ -58,109 +61,18 @@
     <script src="../js/auth.js"></script>
 
     <script>
-        // 회원가입 폼 처리
-        document.getElementById('signup-form').addEventListener('submit', async function(e) {
-            e.preventDefault()
-            
-            const fullName = document.getElementById('fullName').value.trim()
-            const email = document.getElementById('email').value.trim()
-            const password = document.getElementById('password').value
-            const confirmPassword = document.getElementById('confirmPassword').value
-            const signupBtn = document.getElementById('signup-btn')
-            const btnText = signupBtn.querySelector('.btn-text')
-            const btnLoading = signupBtn.querySelector('.btn-loading')
-            
-            // 필수 필드 검사
-            if (!fullName) {
-                showMessage('이름을 입력해주세요.', 'error')
-                document.getElementById('fullName').focus()
-                return
-            }
-            
-            if (fullName.length < 2) {
-                showMessage('이름은 최소 2자 이상 입력해주세요.', 'error')
-                document.getElementById('fullName').focus()
-                return
-            }
-            
-            if (!email) {
-                showMessage('이메일을 입력해주세요.', 'error')
-                document.getElementById('email').focus()
-                return
-            }
-            
-            // 이메일 형식 검사
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-            if (!emailRegex.test(email)) {
-                showMessage('올바른 이메일 형식을 입력해주세요.', 'error')
-                document.getElementById('email').focus()
-                return
-            }
-            
-            if (!password) {
-                showMessage('비밀번호를 입력해주세요.', 'error')
-                document.getElementById('password').focus()
-                return
-            }
-            
-            if (password.length < 6) {
-                showMessage('비밀번호는 최소 6자 이상이어야 합니다.', 'error')
-                document.getElementById('password').focus()
-                return
-            }
-            
-            // 비밀번호 강도 검사 (영문자와 숫자 포함)
-            const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{6,}$/
-            if (!passwordRegex.test(password)) {
-                showMessage('비밀번호는 영문자와 숫자를 포함해야 합니다.', 'error')
-                document.getElementById('password').focus()
-                return
-            }
-            
-            if (!confirmPassword) {
-                showMessage('비밀번호 확인을 입력해주세요.', 'error')
-                document.getElementById('confirmPassword').focus()
-                return
-            }
-            
-            // 비밀번호 일치 확인
-            if (password !== confirmPassword) {
-                showMessage('비밀번호가 일치하지 않습니다.', 'error')
-                document.getElementById('confirmPassword').focus()
-                return
-            }
-            
-            // 로딩 상태
-            signupBtn.disabled = true
-            btnText.style.display = 'none'
-            btnLoading.style.display = 'inline'
-            
-            try {
-                if (window.Auth) {
-                    const result = await Auth.signUp(email, password, fullName)
-                    if (result.success) {
-                        showMessage('회원가입이 완료되었습니다! 이메일을 확인해주세요.', 'success')
-                        setTimeout(() => {
-                            window.location.href = 'login.html'
-                        }, 2000)
-                    } else {
-                        showMessage(result.error, 'error')
-                    }
-                } else {
-                    showMessage('인증 시스템을 불러오는 중 오류가 발생했습니다.', 'error')
-                }
-            } catch (error) {
-                console.error('회원가입 오류:', error)
-                showMessage('회원가입 중 오류가 발생했습니다.', 'error')
-            } finally {
-                // 로딩 상태 해제
-                signupBtn.disabled = false
-                btnText.style.display = 'inline'
-                btnLoading.style.display = 'none'
+        // 회원가입 폼 처리 - Auth.handleSignUpForm 사용
+        document.getElementById('signup-form').addEventListener('submit', function(e) {
+            if (window.Auth && window.Auth.handleSignUpForm) {
+                Auth.handleSignUpForm.call(Auth, e)
+            } else {
+                e.preventDefault()
+                console.error('Auth 모듈을 찾을 수 없습니다.')
+                showMessage('인증 시스템을 불러오는 중 오류가 발생했습니다.', 'error')
             }
         })
 
-        // 실시간 유효성 검사
+        // 실시간 유효성 검사는 간단하게 유지
         document.getElementById('fullName').addEventListener('input', function() {
             const value = this.value.trim()
             if (value && value.length < 2) {
@@ -170,26 +82,25 @@
             }
         })
 
-        document.getElementById('email').addEventListener('input', function() {
+        document.getElementById('userEmail').addEventListener('input', function() {
             const value = this.value.trim()
-            const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
-            if (value && !emailRegex.test(value)) {
-                this.setCustomValidity('올바른 이메일 형식을 입력해주세요.')
-            } else {
-                this.setCustomValidity('')
+            if (window.Auth && window.Auth.validateEmail) {
+                if (value && !Auth.validateEmail(value)) {
+                    this.setCustomValidity('올바른 이메일 형식을 입력해주세요.')
+                } else {
+                    this.setCustomValidity('')
+                }
             }
         })
 
         document.getElementById('password').addEventListener('input', function() {
             const value = this.value
-            const passwordRegex = /^(?=.*[A-Za-z])(?=.*\d)[A-Za-z\d@$!%*?&]{6,}$/
-            
-            if (value && value.length < 6) {
-                this.setCustomValidity('비밀번호는 최소 6자 이상이어야 합니다.')
-            } else if (value && !passwordRegex.test(value)) {
-                this.setCustomValidity('비밀번호는 영문자와 숫자를 포함해야 합니다.')
-            } else {
-                this.setCustomValidity('')
+            if (window.Auth && window.Auth.validatePassword) {
+                if (value && !Auth.validatePassword(value)) {
+                    this.setCustomValidity('비밀번호는 최소 6자 이상이며, 영문자와 숫자를 포함해야 합니다.')
+                } else {
+                    this.setCustomValidity('')
+                }
             }
             
             // 비밀번호 확인 필드도 다시 검사
@@ -217,7 +128,7 @@
             messageDiv.className = `message ${type}`
             messageDiv.style.display = 'block'
             
-            // 5초 후 메시지 숨기기 (회원가입은 조금 더 길게)
+            // 5초 후 메시지 숨기기
             setTimeout(() => {
                 messageDiv.style.display = 'none'
             }, 5000)
@@ -225,12 +136,20 @@
 
         // 페이지 로드 시 이미 로그인된 사용자 확인
         document.addEventListener('DOMContentLoaded', async function() {
+            console.log('signup.html 페이지 로드됨')
             if (window.Auth) {
-                const user = await Auth.getCurrentUser()
-                if (user) {
-                    // 이미 로그인된 경우 메인 페이지로 리다이렉트
-                    window.location.href = '../index.html'
+                console.log('Auth 모듈 사용 가능')
+                try {
+                    const isLoggedIn = await SupabaseUtils.isLoggedIn()
+                    if (isLoggedIn) {
+                        console.log('이미 로그인됨 - 메인 페이지로 리다이렉트')
+                        window.location.href = '../index.html'
+                    }
+                } catch (error) {
+                    console.error('로그인 상태 확인 오류:', error)
                 }
+            } else {
+                console.error('Auth 모듈을 찾을 수 없습니다.')
             }
         })
     </script>

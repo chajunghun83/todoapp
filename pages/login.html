@@ -11,7 +11,9 @@
     <div class="auth-container">
         <div class="auth-card">
             <div class="auth-header">
-                <h1>📝 Todo 앱</h1>
+                <div class="auth-logo">
+                    <img src="../assets/images/todoapp_img.png" alt="Todo 앱 로고" class="logo-image">
+                </div>
                 <h2>로그인</h2>
                 <p>계정에 로그인하여 할 일을 관리하세요</p>
             </div>
@@ -21,7 +23,7 @@
             <form id="login-form" class="auth-form">
                 <div class="form-group">
                     <label for="email">이메일</label>
-                    <input type="email" id="email" name="email" class="form-control" placeholder="이메일을 입력하세요" required>
+                    <input type="text" id="email" name="email" class="form-control" placeholder="가입시 사용한 이메일" required autocomplete="email">
                 </div>
 
                 <div class="form-group">

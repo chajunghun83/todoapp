@@ -87,18 +87,33 @@
                 <div id="calendar-view" class="view-content" style="display: none;">
                     <div class="calendar-container">
                         <div class="calendar-header">
-                            <div class="calendar-nav-left">
+                            <button id="today-btn" class="calendar-today-btn">오늘</button>
+                            <div class="calendar-nav-center">
                                 <button id="prev-month" class="calendar-nav">‹</button>
-                                <button id="today-btn" class="calendar-today-btn">오늘</button>
+                                <h3 id="calendar-title" class="calendar-title-clickable">2024년 1월</h3>
+                                <button id="next-month" class="calendar-nav">›</button>
                             </div>
-                            <h3 id="calendar-title" class="calendar-title-clickable">2024년 1월</h3>
-                            <button id="next-month" class="calendar-nav">›</button>
                         </div>
                         <div class="calendar-grid" id="calendar-grid">
                             <!-- 캘린더가 여기에 동적으로 생성됩니다 -->
                         </div>
                     </div>
                 </div>
+            </div>
+
+            <!-- 사용자 정보 영역 -->
+            <div class="user-info"></div>
+            
+            <!-- 테스트 버튼들 추가 -->
+            <div class="test-buttons" style="margin: 10px 0; padding: 10px; background: #f0f0f0; border-radius: 5px; display: none;">
+                <h4>🔧 디버깅 도구</h4>
+                <button onclick="checkLoginStatus()" class="btn btn-sm btn-info">로그인 상태 확인</button>
+                <button onclick="checkTokens()" class="btn btn-sm btn-info">토큰 확인</button>
+                <button onclick="checkUserInfo()" class="btn btn-sm btn-info">사용자 정보 확인</button>
+                <button onclick="testTodoInsert()" class="btn btn-sm btn-warning">할일 추가 테스트</button>
+                <button onclick="testDirectLogin()" class="btn btn-sm btn-success">직접 로그인 테스트</button>
+                <button onclick="forceRelogin()" class="btn btn-sm btn-danger">강제 재로그인</button>
+                <div id="test-result" style="margin-top: 10px; padding: 10px; background: white; border-radius: 3px; min-height: 100px; font-family: monospace; font-size: 12px; white-space: pre-wrap;"></div>
             </div>
         </div>
     </main>
@@ -347,10 +362,14 @@
                         localStorage.setItem('test_user_name', fullName)
                         SupabaseUtils.showSuccess('이름이 변경되었습니다!')
                     } else {
-                        // 실제 Supabase에서 프로필 업데이트
+                        // DirectSupabaseAPI로 프로필 업데이트
                         const user = await SupabaseUtils.getCurrentUser()
                         if (user) {
-                            await Auth.updateProfile(user.id, { full_name: fullName })
+                            const result = await DirectSupabaseAPI.updateProfile(user.id, { name: fullName })
+                            if (result.error) {
+                                SupabaseUtils.showError('이름 변경에 실패했습니다: ' + result.error.message)
+                                return
+                            }
                             SupabaseUtils.showSuccess('이름이 변경되었습니다!')
                         }
                     }
@@ -480,11 +499,11 @@
                     if (user) {
                         document.getElementById('profile-email').value = user.email
                         
-                        // 프로필에서 이름 가져오기
+                        // DirectSupabaseAPI로 프로필에서 이름 가져오기
                         try {
-                            const profile = await Auth.getProfile(user.id)
-                            if (profile && profile.full_name) {
-                                document.getElementById('profile-name').value = profile.full_name
+                            const profileResult = await DirectSupabaseAPI.getProfile(user.id)
+                            if (profileResult.data && profileResult.data.name) {
+                                document.getElementById('profile-name').value = profileResult.data.name
                             } else if (user.user_metadata && user.user_metadata.full_name) {
                                 document.getElementById('profile-name').value = user.user_metadata.full_name
                             }

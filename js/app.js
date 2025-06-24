@@ -106,23 +106,11 @@ const TodoApp = {
             try {
                 let data, error
                 
-                // GitHub Pages 환경에서는 직접 API 호출 사용
-                if (window.location.hostname.includes('github.io')) {
-                    console.log('GitHub Pages 환경 - 직접 API 호출 사용')
-                    const result = await DirectSupabaseAPI.getTodos(user.id)
-                    data = result.data
-                    error = result.error
-                } else {
-                    // 로컬 환경에서는 Supabase 클라이언트 사용
-                    const result = await supabaseClient
-                        .from('todos')
-                        .select('*')
-                        .eq('user_id', user.id)
-                        .order('created_at', { ascending: false })
-                    
-                    data = result.data
-                    error = result.error
-                }
+                // 모든 환경에서 DirectSupabaseAPI 사용 (토큰 인증을 위해)
+                console.log('DirectSupabaseAPI로 Todo 데이터 로드')
+                const result = await DirectSupabaseAPI.getTodos(user.id)
+                data = result.data
+                error = result.error
 
                 if (error) {
                     console.error('Supabase Todo 로드 오류:', error)
@@ -339,22 +327,9 @@ const TodoApp = {
             console.log('추가할 데이터:', todoData)
             
             try {
-                // 먼저 현재 사용자의 인증 상태 재확인
-                console.log('사용자 인증 상태 재확인...')
-                const { data: { session }, error: sessionError } = await supabaseClient.auth.getSession()
-                
-                console.log('세션 데이터:', session)
-                console.log('세션 오류:', sessionError)
-                
-                if (sessionError || !session) {
-                    console.error('세션 오류:', sessionError)
-                    throw new Error('로그인 세션이 만료되었습니다.')
-                }
-                
-                console.log('세션 확인 완료. 사용자 ID:', session.user.id)
-                
-                // 실제 세션의 사용자 ID 사용
-                todoData.user_id = session.user.id
+                // 토큰 기반 사용자 정보 사용
+                console.log('토큰 기반 사용자 정보 사용...')
+                console.log('사용자 ID 확인:', user.id)
                 
                 // 완전한 데이터로 삽입 시도
                 const completeTodoData = {
@@ -370,24 +345,14 @@ const TodoApp = {
                 console.log('=== Supabase 삽입 시도 ===')
                 console.log('완전한 데이터:', completeTodoData)
                 
+                // 환경별 분기
                 let data, error
                 
-                // GitHub Pages 환경에서는 직접 API 호출 사용
-                if (window.location.hostname.includes('github.io')) {
-                    console.log('GitHub Pages 환경 - 직접 API 호출로 todo 추가')
-                    const result = await DirectSupabaseAPI.insertTodo(completeTodoData)
-                    data = result.data
-                    error = result.error
-                } else {
-                    // 로컬 환경에서는 Supabase 클라이언트 사용
-                    const result = await supabaseClient
-                        .from('todos')
-                        .insert([completeTodoData])
-                        .select() // 추가된 데이터 반환
-                    
-                    data = result.data
-                    error = result.error
-                }
+                // 모든 환경에서 DirectSupabaseAPI 사용 (토큰 인증을 위해)
+                console.log('DirectSupabaseAPI로 todo 추가')
+                const result = await DirectSupabaseAPI.insertTodo(completeTodoData)
+                data = result.data
+                error = result.error
 
                 console.log('=== Supabase 응답 ===')
                 console.log('응답 데이터:', data)
@@ -558,12 +523,10 @@ const TodoApp = {
                 return
             }
 
-            // 실제 Supabase 호출
-            console.log('실제 Supabase에서 Todo 수정 중...', { todoId, updates })
-            const { error } = await supabaseClient
-                .from('todos')
-                .update(updates)
-                .eq('id', todoId)
+            // DirectSupabaseAPI 사용
+            console.log('DirectSupabaseAPI로 Todo 수정 중...', { todoId, updates })
+            const result = await DirectSupabaseAPI.updateTodo(todoId, updates)
+            const error = result.error
 
             if (error) {
                 console.error('Supabase Todo 수정 오류:', error)
@@ -597,16 +560,14 @@ const TodoApp = {
                 return
             }
 
-            // 실제 Supabase 호출
-            console.log('실제 Supabase에서 Todo 상태 변경 중...', { todoId, completed })
-            const { error } = await supabaseClient
-                .from('todos')
-                .update({ 
-                    completed: completed,
-                    progress: completed ? 100 : 0,
-                    updated_at: new Date().toISOString()
-                })
-                .eq('id', todoId)
+            // DirectSupabaseAPI 사용
+            console.log('DirectSupabaseAPI로 Todo 상태 변경 중...', { todoId, completed })
+            const result = await DirectSupabaseAPI.updateTodo(todoId, { 
+                completed: completed,
+                progress: completed ? 100 : 0,
+                updated_at: new Date().toISOString()
+            })
+            const error = result.error
 
             if (error) {
                 console.error('Supabase Todo 상태 변경 오류:', error)
@@ -641,12 +602,10 @@ const TodoApp = {
                 return
             }
 
-            // 실제 Supabase 호출
-            console.log('실제 Supabase에서 Todo 삭제 중...', { todoId })
-            const { error } = await supabaseClient
-                .from('todos')
-                .delete()
-                .eq('id', todoId)
+            // DirectSupabaseAPI 사용
+            console.log('DirectSupabaseAPI로 Todo 삭제 중...', { todoId })
+            const result = await DirectSupabaseAPI.deleteTodo(todoId)
+            const error = result.error
 
             if (error) {
                 console.error('Supabase Todo 삭제 오류:', error)
@@ -799,4 +758,189 @@ document.addEventListener('DOMContentLoaded', () => {
     TodoApp.init()
 })
 
-console.log('Todo 앱이 초기화되었습니다.') 
+console.log('Todo 앱이 초기화되었습니다.')
+
+// 테스트 함수들 추가
+window.checkLoginStatus = async function() {
+    const resultDiv = document.getElementById('test-result')
+    resultDiv.textContent = '로그인 상태 확인 중...\n'
+    
+    try {
+        const isLoggedIn = await SupabaseUtils.isLoggedIn()
+        const testLoggedIn = localStorage.getItem('test_logged_in')
+        
+        let result = `=== 로그인 상태 확인 ===\n`
+        result += `실제 Supabase 로그인: ${isLoggedIn}\n`
+        result += `테스트 모드 로그인: ${testLoggedIn === 'true'}\n`
+        result += `현재 환경: ${window.location.hostname.includes('github.io') ? 'GitHub Pages' : '로컬'}\n`
+        result += `현재 시간: ${new Date().toLocaleString()}\n`
+        
+        resultDiv.textContent = result
+    } catch (error) {
+        resultDiv.textContent = `오류 발생: ${error.message}`
+    }
+}
+
+window.checkTokens = function() {
+    const resultDiv = document.getElementById('test-result')
+    
+    const accessToken = localStorage.getItem('supabase_access_token')
+    const userStr = localStorage.getItem('supabase_user')
+    const testLoggedIn = localStorage.getItem('test_logged_in')
+    const testUserEmail = localStorage.getItem('test_user_email')
+    
+    let result = `=== 저장된 토큰/정보 확인 ===\n`
+    result += `Supabase Access Token: ${accessToken ? accessToken.substring(0, 50) + '...' : '없음'}\n`
+    result += `Supabase User: ${userStr ? '존재' : '없음'}\n`
+    result += `테스트 로그인: ${testLoggedIn || '없음'}\n`
+    result += `테스트 사용자 이메일: ${testUserEmail || '없음'}\n`
+    
+    if (userStr) {
+        try {
+            const user = JSON.parse(userStr)
+            result += `\n=== Supabase 사용자 정보 ===\n`
+            result += `ID: ${user.id || '없음'}\n`
+            result += `Email: ${user.email || '없음'}\n`
+            result += `Created: ${user.created_at || '없음'}\n`
+        } catch (error) {
+            result += `사용자 정보 파싱 오류: ${error.message}\n`
+        }
+    }
+    
+    resultDiv.textContent = result
+}
+
+window.checkUserInfo = async function() {
+    const resultDiv = document.getElementById('test-result')
+    resultDiv.textContent = '사용자 정보 확인 중...\n'
+    
+    try {
+        const user = await SupabaseUtils.getCurrentUser()
+        
+        let result = `=== 현재 사용자 정보 ===\n`
+        if (user) {
+            result += `ID: ${user.id}\n`
+            result += `Email: ${user.email}\n`
+            result += `Created: ${user.created_at}\n`
+            result += `Last Sign In: ${user.last_sign_in_at}\n`
+            
+            if (user.user_metadata) {
+                result += `\n=== 메타데이터 ===\n`
+                result += JSON.stringify(user.user_metadata, null, 2) + '\n'
+            }
+        } else {
+            result += '사용자 정보 없음\n'
+        }
+        
+        resultDiv.textContent = result
+    } catch (error) {
+        resultDiv.textContent = `오류 발생: ${error.message}`
+    }
+}
+
+window.testTodoInsert = async function() {
+    const resultDiv = document.getElementById('test-result')
+    resultDiv.textContent = '할일 추가 테스트 중...\n'
+    
+    try {
+        const user = await SupabaseUtils.getCurrentUser()
+        if (!user) {
+            resultDiv.textContent = '로그인되지 않음 - 할일 추가 불가'
+            return
+        }
+        
+        const testTodo = {
+            title: `테스트 할일 ${new Date().getTime()}`,
+            description: '테스트용 할일입니다',
+            completed: false,
+            priority: 'medium',
+            progress: 0,
+            due_date: null,
+            start_date: null,
+            user_id: user.id
+        }
+        
+        let result = `=== 할일 추가 테스트 ===\n`
+        result += `사용자 ID: ${user.id}\n`
+        result += `테스트 할일: ${testTodo.title}\n`
+        result += `요청 데이터: ${JSON.stringify(testTodo, null, 2)}\n`
+        result += `요청 시작...\n`
+        
+        resultDiv.textContent = result
+        
+        // 모든 환경에서 DirectSupabaseAPI 사용 (토큰 인증을 위해)
+        result += `DirectSupabaseAPI 사용\n`
+        const insertResult = await DirectSupabaseAPI.insertTodo(testTodo)
+        
+        if (insertResult.error) {
+            result += `\n❌ 오류 발생:\n${JSON.stringify(insertResult.error, null, 2)}`
+        } else {
+            result += `\n✅ 성공!\n${JSON.stringify(insertResult.data, null, 2)}`
+        }
+        
+        resultDiv.textContent = result
+        
+    } catch (error) {
+        resultDiv.textContent = `오류 발생: ${error.message}\n${error.stack}`
+    }
+}
+
+window.testDirectLogin = async function() {
+    const resultDiv = document.getElementById('test-result')
+    resultDiv.textContent = '직접 로그인 테스트 중...\n'
+    
+    try {
+        const email = 'test@gmail.com'
+        const password = prompt('비밀번호를 입력하세요:')
+        
+        if (!password) {
+            resultDiv.textContent = '비밀번호가 입력되지 않았습니다.'
+            return
+        }
+        
+        let result = `=== 직접 로그인 테스트 ===\n`
+        result += `이메일: ${email}\n`
+        result += `요청 시작...\n`
+        
+        resultDiv.textContent = result
+        
+        const loginResult = await DirectSupabaseAPI.signIn(email, password)
+        
+        if (loginResult.error) {
+            result += `\n❌ 오류 발생:\n${JSON.stringify(loginResult.error, null, 2)}`
+        } else {
+            result += `\n✅ 성공!\n${JSON.stringify(loginResult.data, null, 2)}`
+            
+            // 토큰 저장 확인
+            const savedToken = localStorage.getItem('supabase_access_token')
+            const savedUser = localStorage.getItem('supabase_user')
+            
+            result += `\n=== 저장된 정보 확인 ===\n`
+            result += `토큰: ${savedToken ? savedToken.substring(0, 50) + '...' : '없음'}\n`
+            result += `사용자: ${savedUser ? '저장됨' : '없음'}\n`
+        }
+        
+        resultDiv.textContent = result
+        
+    } catch (error) {
+        resultDiv.textContent = `오류 발생: ${error.message}\n${error.stack}`
+    }
+}
+
+window.forceRelogin = function() {
+    const resultDiv = document.getElementById('test-result')
+    resultDiv.textContent = '강제 재로그인 실행 중...\n'
+    
+    // 모든 인증 관련 정보 삭제
+    localStorage.removeItem('supabase_access_token')
+    localStorage.removeItem('supabase_user')
+    localStorage.removeItem('test_logged_in')
+    localStorage.removeItem('test_user_email')
+    localStorage.removeItem('test_user_name')
+    
+    resultDiv.textContent = '모든 인증 정보가 삭제되었습니다.\n로그인 페이지로 이동합니다...'
+    
+    setTimeout(() => {
+        window.location.href = 'pages/login.html'
+    }, 2000)
+} 

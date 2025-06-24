@@ -461,15 +461,19 @@ const TodoApp = {
             document.getElementById('edit-todo-description').value = todo.description || ''
             
             if (todo.start_date) {
+                // 시간대 문제를 피하기 위해 로컬 시간대로 변환
                 const startDate = new Date(todo.start_date)
-                document.getElementById('edit-todo-start-date').value = startDate.toISOString().slice(0, 16)
+                const localStartDate = new Date(startDate.getTime() - startDate.getTimezoneOffset() * 60000)
+                document.getElementById('edit-todo-start-date').value = localStartDate.toISOString().slice(0, 16)
             } else {
                 document.getElementById('edit-todo-start-date').value = ''
             }
             
             if (todo.due_date) {
+                // 시간대 문제를 피하기 위해 로컬 시간대로 변환
                 const dueDate = new Date(todo.due_date)
-                document.getElementById('edit-todo-due-date').value = dueDate.toISOString().slice(0, 16)
+                const localDueDate = new Date(dueDate.getTime() - dueDate.getTimezoneOffset() * 60000)
+                document.getElementById('edit-todo-due-date').value = localDueDate.toISOString().slice(0, 16)
             } else {
                 document.getElementById('edit-todo-due-date').value = ''
             }

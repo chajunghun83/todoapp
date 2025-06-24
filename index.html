@@ -113,7 +113,21 @@
                 <button onclick="testTodoInsert()" class="btn btn-sm btn-warning">할일 추가 테스트</button>
                 <button onclick="testDirectLogin()" class="btn btn-sm btn-success">직접 로그인 테스트</button>
                 <button onclick="forceRelogin()" class="btn btn-sm btn-danger">강제 재로그인</button>
+                <button onclick="debugCalendarDates()" class="btn btn-sm btn-primary">📅 캘린더 날짜 디버깅</button>
+                <button onclick="addDummyData()" class="btn btn-sm btn-warning">🎭 더미 데이터 추가</button>
                 <div id="test-result" style="margin-top: 10px; padding: 10px; background: white; border-radius: 3px; min-height: 100px; font-family: monospace; font-size: 12px; white-space: pre-wrap;"></div>
+            </div>
+            
+            <!-- 날짜 디버깅 전용 영역 -->
+            <div id="date-debug-panel" style="margin: 10px 0; padding: 15px; background: #e8f4fd; border: 2px solid #2196F3; border-radius: 8px; display: none;">
+                <h4>📅 날짜 디버깅 패널</h4>
+                <div style="margin-bottom: 15px;">
+                    <button onclick="addTestTodoWithDates()" class="btn btn-primary">테스트 할일 추가 (6월 24-25일)</button>
+                    <button onclick="showAllTodoDates()" class="btn btn-info">모든 할일 날짜 분석</button>
+                    <button onclick="testDateConversion()" class="btn btn-warning">날짜 변환 테스트</button>
+                    <button onclick="clearDateDebug()" class="btn btn-secondary">디버그 창 지우기</button>
+                </div>
+                <div id="date-debug-result" style="background: white; padding: 15px; border-radius: 5px; font-family: monospace; font-size: 13px; line-height: 1.5; white-space: pre-wrap; min-height: 200px; max-height: 400px; overflow-y: auto; border: 1px solid #ddd;"></div>
             </div>
         </div>
     </main>
@@ -313,6 +327,7 @@
     <script src="show_sql.js"></script>
     <script src="add_progress_column.js"></script>
     <script src="add_start_date_column.js"></script>
+    <script src="add_dummy_data.js"></script>
 
     <script>
         // 진행률 슬라이더 실시간 업데이트
@@ -684,9 +699,15 @@
                     dayElement.classList.add('today')
                 }
                 
+                // 로컬 날짜로 날짜 문자열 생성 (시간대 문제 해결)
+                const dateYear = date.getFullYear()
+                const dateMonth = String(date.getMonth() + 1).padStart(2, '0')
+                const dateDay = String(date.getDate()).padStart(2, '0')
+                const dateStr = `${dateYear}-${dateMonth}-${dateDay}`
+                
                 dayElement.innerHTML = `
                     <div class="calendar-day-number">${date.getDate()}</div>
-                    <div class="calendar-todos" id="calendar-todos-${date.toISOString().split('T')[0]}">
+                    <div class="calendar-todos" id="calendar-todos-${dateStr}">
                     </div>
                 `
                 
@@ -703,18 +724,42 @@
         function renderCalendarTodos() {
             if (!window.TodoApp || !window.TodoApp.todos) return
             
+            console.log('🔍 캘린더 Todo 렌더링 시작')
+            
             window.TodoApp.todos.forEach(todo => {
+                console.log('📝 처리 중인 Todo:', {
+                    title: todo.title,
+                    start_date: todo.start_date,
+                    due_date: todo.due_date
+                })
+                
                 const dates = []
+                
+                // UTC 기준으로 날짜 생성하여 시간대 문제 해결
+                function createLocalDate(dateString) {
+                    const datePart = dateString.split('T')[0]
+                    console.log('📅 날짜 파싱:', { original: dateString, datePart })
+                    // UTC 기준으로 날짜 생성 (시간대 문제 해결)
+                    const utcDate = new Date(datePart + 'T00:00:00Z')
+                    console.log('🕐 생성된 UTC 날짜:', { 
+                        input: datePart, 
+                        result: utcDate.toDateString(),
+                        resultISO: utcDate.toISOString().split('T')[0]
+                    })
+                    return utcDate
+                }
                 
                 // 시작일과 마감일이 모두 있는 경우 - 기간 전체 표시
                 if (todo.start_date && todo.due_date) {
-                    const startDate = new Date(todo.start_date.split('T')[0])
-                    const endDate = new Date(todo.due_date.split('T')[0])
+                    const startDate = createLocalDate(todo.start_date)
+                    const endDate = createLocalDate(todo.due_date)
                     
                     // 시작일부터 마감일까지 모든 날짜 추가
                     const currentDate = new Date(startDate)
                     while (currentDate <= endDate) {
+                        // UTC 기준으로 날짜 문자열 생성
                         const dateStr = currentDate.toISOString().split('T')[0]
+                        
                         let type = 'middle'
                         
                         if (currentDate.getTime() === startDate.getTime()) {
@@ -723,17 +768,43 @@
                             type = 'due'
                         }
                         
+                        console.log('📆 캘린더 날짜 생성:', {
+                            currentDate: currentDate.toDateString(),
+                            dateStr,
+                            type,
+                            startDate: startDate.toDateString(),
+                            endDate: endDate.toDateString()
+                        })
+                        
                         dates.push({ date: dateStr, type: type })
-                        currentDate.setDate(currentDate.getDate() + 1)
+                        currentDate.setUTCDate(currentDate.getUTCDate() + 1)
                     }
                 } else {
                     // 시작일 또는 마감일 중 하나만 있는 경우
-                    if (todo.start_date) dates.push({ date: todo.start_date.split('T')[0], type: 'start' })
-                    if (todo.due_date) dates.push({ date: todo.due_date.split('T')[0], type: 'due' })
+                    if (todo.start_date) {
+                        const startDate = createLocalDate(todo.start_date)
+                        const finalDate = startDate.toISOString().split('T')[0]
+                        console.log('🚀 시작일 최종 처리:', { originalDate: todo.start_date, finalDate })
+                        dates.push({ date: finalDate, type: 'start' })
+                    }
+                    if (todo.due_date) {
+                        const dueDate = createLocalDate(todo.due_date)
+                        const finalDate = dueDate.toISOString().split('T')[0]
+                        console.log('📅 마감일 최종 처리:', { originalDate: todo.due_date, finalDate })
+                        dates.push({ date: finalDate, type: 'due' })
+                    }
                 }
                 
                 dates.forEach(({ date, type }) => {
-                    const container = document.getElementById(`calendar-todos-${date}`)
+                    const containerId = `calendar-todos-${date}`
+                    const container = document.getElementById(containerId)
+                    
+                    console.log('🔍 컨테이너 찾기:', {
+                        date,
+                        type,
+                        containerId,
+                        containerFound: !!container
+                    })
                     
                     if (container) {
                         const todoElement = document.createElement('div')
@@ -750,8 +821,15 @@
                         
                         if (todo.completed) {
                             todoElement.classList.add('completed')
-                        } else if (type === 'due' && new Date(date) < new Date()) {
-                            todoElement.classList.add('overdue')
+                        } else if (type === 'due') {
+                            // 마감일 확인 시 UTC 기준으로 비교
+                            const todoDate = new Date(date + 'T00:00:00Z')
+                            const today = new Date()
+                            const todayUTC = new Date(today.getFullYear(), today.getMonth(), today.getDate())
+                            
+                            if (todoDate < todayUTC) {
+                                todoElement.classList.add('overdue')
+                            }
                         }
                         
                         // 아이콘과 텍스트 설정
@@ -836,6 +914,196 @@
                 SupabaseUtils.showSuccess('테스트 모드로 전환됨')
                 setTimeout(() => window.location.reload(), 1000)
             }
+        }
+
+        // 📅 날짜 디버깅 함수들
+        function debugCalendarDates() {
+            const panel = document.getElementById('date-debug-panel')
+            panel.style.display = panel.style.display === 'none' ? 'block' : 'none'
+            
+            if (panel.style.display === 'block') {
+                showAllTodoDates()
+            }
+        }
+
+        function addTestTodoWithDates() {
+            const debugResult = document.getElementById('date-debug-result')
+            debugResult.textContent += '\n🚀 테스트 할일 추가 중...\n'
+            
+            // 현재 날짜 기준으로 6월 24일, 25일 설정
+            const now = new Date()
+            const year = now.getFullYear()
+            const startDate = `${year}-06-24T13:29:00`
+            const dueDate = `${year}-06-25T13:29:00`
+            
+            debugResult.textContent += `입력 날짜:\n`
+            debugResult.textContent += `  시작일: ${startDate}\n`
+            debugResult.textContent += `  마감일: ${dueDate}\n\n`
+            
+            // 테스트 할일 추가
+            if (window.TodoApp) {
+                const testTodo = {
+                    id: 'test-' + Date.now(),
+                    title: '날짜 테스트 할일',
+                    description: '6월 24일 시작, 6월 25일 마감',
+                    start_date: startDate,
+                    due_date: dueDate,
+                    progress: 0,
+                    completed: false,
+                    created_at: new Date().toISOString(),
+                    updated_at: new Date().toISOString()
+                }
+                
+                // 테스트 모드에서 직접 추가
+                const testLoggedIn = localStorage.getItem('test_logged_in')
+                if (testLoggedIn === 'true') {
+                    window.TodoApp.todos.push(testTodo)
+                    window.TodoApp.renderTodos()
+                    debugResult.textContent += '✅ 테스트 할일이 추가되었습니다!\n\n'
+                    
+                    // 캘린더가 활성화되어 있으면 렌더링
+                    if (currentView === 'calendar') {
+                        renderCalendar()
+                    }
+                    
+                    // 추가된 할일의 날짜 분석
+                    analyzeTodoDate(testTodo)
+                } else {
+                    debugResult.textContent += '❌ 테스트 모드가 아닙니다. 로그인 후 다시 시도하세요.\n\n'
+                }
+            }
+        }
+
+        function showAllTodoDates() {
+            const debugResult = document.getElementById('date-debug-result')
+            debugResult.textContent = '📊 모든 할일 날짜 분석\n' + '='.repeat(50) + '\n\n'
+            
+            if (!window.TodoApp || !window.TodoApp.todos || window.TodoApp.todos.length === 0) {
+                debugResult.textContent += '❌ 할일이 없습니다.\n'
+                return
+            }
+            
+            window.TodoApp.todos.forEach((todo, index) => {
+                debugResult.textContent += `📝 할일 ${index + 1}: ${todo.title}\n`
+                debugResult.textContent += `   ID: ${todo.id}\n`
+                
+                if (todo.start_date) {
+                    analyzeTodoDate(todo, 'start_date')
+                }
+                
+                if (todo.due_date) {
+                    analyzeTodoDate(todo, 'due_date')
+                }
+                
+                debugResult.textContent += '\n' + '-'.repeat(40) + '\n\n'
+            })
+        }
+
+        function analyzeTodoDate(todo, dateField = null) {
+            const debugResult = document.getElementById('date-debug-result')
+            
+            const dates = dateField ? [dateField] : ['start_date', 'due_date']
+            
+            dates.forEach(field => {
+                if (!todo[field]) return
+                
+                const originalDate = todo[field]
+                debugResult.textContent += `📅 ${field === 'start_date' ? '시작일' : '마감일'} 분석:\n`
+                debugResult.textContent += `   원본: ${originalDate}\n`
+                
+                // 1. 원본 Date 객체 생성
+                const originalDateObj = new Date(originalDate)
+                debugResult.textContent += `   원본 Date: ${originalDateObj.toString()}\n`
+                debugResult.textContent += `   원본 ISO: ${originalDateObj.toISOString()}\n`
+                debugResult.textContent += `   원본 날짜만: ${originalDateObj.toISOString().split('T')[0]}\n`
+                
+                // 2. 이전 방식 (문제가 있던 방식)
+                const datePart = originalDate.split('T')[0]
+                const [year, month, day] = datePart.split('-').map(Number)
+                const oldLocalDate = new Date(year, month - 1, day)
+                
+                debugResult.textContent += `   [이전방식] 파싱된 부분: ${datePart}\n`
+                debugResult.textContent += `   [이전방식] 파싱된 값: year=${year}, month=${month}, day=${day}\n`
+                debugResult.textContent += `   [이전방식] 로컬 Date: ${oldLocalDate.toString()}\n`
+                debugResult.textContent += `   [이전방식] 로컬 ISO: ${oldLocalDate.toISOString()}\n`
+                debugResult.textContent += `   [이전방식] 로컬 날짜만: ${oldLocalDate.toISOString().split('T')[0]}\n`
+                
+                // 3. 새로운 UTC 방식
+                const utcDate = new Date(datePart + 'T00:00:00Z')
+                debugResult.textContent += `   [새방식] UTC Date: ${utcDate.toString()}\n`
+                debugResult.textContent += `   [새방식] UTC ISO: ${utcDate.toISOString()}\n`
+                debugResult.textContent += `   [새방식] UTC 날짜만: ${utcDate.toISOString().split('T')[0]}\n`
+                
+                // 4. 최종 캘린더 표시 날짜 (새 방식)
+                const finalDate = utcDate.toISOString().split('T')[0]
+                debugResult.textContent += `   최종 표시: ${finalDate}\n`
+                
+                // 5. 차이점 분석
+                const oldFinalDate = oldLocalDate.toISOString().split('T')[0]
+                debugResult.textContent += `   비교: 원본=${datePart}, 이전방식=${oldFinalDate}, 새방식=${finalDate}\n`
+                
+                if (datePart !== oldFinalDate) {
+                    debugResult.textContent += `   ⚠️ 이전방식 문제: ${datePart} → ${oldFinalDate} (하루 밀림)\n`
+                } else {
+                    debugResult.textContent += `   ✅ 이전방식 OK\n`
+                }
+                
+                if (datePart !== finalDate) {
+                    debugResult.textContent += `   ⚠️ 새방식 문제: ${datePart} → ${finalDate}\n`
+                } else {
+                    debugResult.textContent += `   ✅ 새방식 OK - 날짜 정확!\n`
+                }
+                
+                debugResult.textContent += '\n'
+            })
+        }
+
+        function testDateConversion() {
+            const debugResult = document.getElementById('date-debug-result')
+            debugResult.textContent = '🧪 날짜 변환 테스트\n' + '='.repeat(50) + '\n\n'
+            
+            const testDates = [
+                '2025-06-24T13:29:00',
+                '2025-06-25T13:29:00',
+                '2025-06-24T00:00:00',
+                '2025-06-25T23:59:59',
+                '2025-06-24',
+                '2025-06-25'
+            ]
+            
+            testDates.forEach(testDate => {
+                debugResult.textContent += `🔍 테스트 날짜: ${testDate}\n`
+                
+                // 방법 1: 직접 new Date()
+                const method1 = new Date(testDate)
+                debugResult.textContent += `   방법1 (new Date): ${method1.toString()}\n`
+                debugResult.textContent += `   방법1 날짜만: ${method1.toISOString().split('T')[0]}\n`
+                
+                // 방법 2: 현재 로직 (split으로 날짜 부분만)
+                const datePart = testDate.split('T')[0]
+                const [year, month, day] = datePart.split('-').map(Number)
+                const method2 = new Date(year, month - 1, day)
+                debugResult.textContent += `   방법2 (로컬생성): ${method2.toString()}\n`
+                debugResult.textContent += `   방법2 날짜만: ${method2.toISOString().split('T')[0]}\n`
+                
+                // 방법 3: UTC 기준
+                const method3 = new Date(datePart + 'T00:00:00Z')
+                debugResult.textContent += `   방법3 (UTC): ${method3.toString()}\n`
+                debugResult.textContent += `   방법3 날짜만: ${method3.toISOString().split('T')[0]}\n`
+                
+                debugResult.textContent += '\n'
+            })
+            
+            // 현재 시간대 정보
+            const now = new Date()
+            debugResult.textContent += `🌍 현재 시간대 정보:\n`
+            debugResult.textContent += `   현재 시간: ${now.toString()}\n`
+            debugResult.textContent += `   시간대 오프셋: ${now.getTimezoneOffset()}분\n`
+            debugResult.textContent += `   시간대 오프셋: ${now.getTimezoneOffset() / 60}시간\n\n`
+        }
+
+        function clearDateDebug() {
+            document.getElementById('date-debug-result').textContent = ''
         }
     </script>
 </body>

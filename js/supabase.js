@@ -12,42 +12,21 @@ const SUPABASE_CONFIG = {
             'Prefer': 'return=representation'
         },
         fetch: (url, options = {}) => {
-            // GitHub Pages에서 CORS 문제가 있을 경우 프록시 사용
-            const isGitHubPages = window.location.hostname.includes('github.io')
-            
-            if (isGitHubPages && options.method !== 'GET') {
-                console.log('GitHub Pages 환경에서 CORS 프록시 사용')
-                // CORS 프록시 사용 (POST, PUT, DELETE 요청의 경우)
-                const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`
-                const corsOptions = {
-                    ...options,
-                    headers: {
-                        ...options.headers,
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': options.headers?.Authorization || `Bearer ${SUPABASE_ANON_KEY}`,
-                        'Content-Type': 'application/json',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    }
+            // 모든 환경에서 직접 fetch 사용 (프록시 제거)
+            const corsOptions = {
+                ...options,
+                mode: 'cors',
+                credentials: 'omit',
+                headers: {
+                    ...options.headers,
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': options.headers?.Authorization || `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
                 }
-                console.log('프록시 요청:', proxyUrl, corsOptions)
-                return fetch(proxyUrl, corsOptions)
-            } else {
-                // 일반 CORS 설정
-                const corsOptions = {
-                    ...options,
-                    mode: 'cors',
-                    credentials: 'omit',
-                    headers: {
-                        ...options.headers,
-                        'apikey': SUPABASE_ANON_KEY,
-                        'Authorization': options.headers?.Authorization || `Bearer ${SUPABASE_ANON_KEY}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-                
-                console.log('일반 CORS fetch 요청:', url, corsOptions)
-                return fetch(url, corsOptions)
             }
+            
+            console.log('직접 fetch 요청:', url, corsOptions)
+            return fetch(url, corsOptions)
         }
     }
 }
@@ -63,6 +42,15 @@ window.supabaseClient = supabaseClient
 const SupabaseUtils = {
     // 현재 사용자 가져오기
     async getCurrentUser() {
+        // GitHub Pages 환경에서는 저장된 토큰 우선 확인
+        if (window.location.hostname.includes('github.io')) {
+            const tokenUser = DirectSupabaseAPI.getCurrentUserFromToken()
+            if (tokenUser) {
+                console.log('토큰에서 사용자 정보 반환:', tokenUser)
+                return tokenUser
+            }
+        }
+        
         // 실제 Supabase 호출을 우선으로 시도
         try {
             const { data: { user }, error } = await supabaseClient.auth.getUser()
@@ -377,6 +365,95 @@ const DirectSupabaseAPI = {
             console.error('직접 API 삭제 실패:', error)
             return { data: null, error }
         }
+    },
+    
+    // 직접 fetch로 회원가입
+    async signUp(email, password) {
+        try {
+            console.log('직접 API 호출로 회원가입:', email)
+            const response = await fetch(`${SUPABASE_URL}/auth/v1/signup`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: email,
+                    password: password
+                })
+            })
+            
+            if (!response.ok) {
+                const errorData = await response.json()
+                console.error('회원가입 API 응답 오류:', response.status, errorData)
+                throw new Error(errorData.error_description || errorData.msg || '회원가입에 실패했습니다.')
+            }
+            
+            const data = await response.json()
+            console.log('직접 API 회원가입 성공:', data)
+            return { data, error: null }
+        } catch (error) {
+            console.error('직접 API 회원가입 실패:', error)
+            return { data: null, error }
+        }
+    },
+    
+    // 직접 fetch로 로그인
+    async signIn(email, password) {
+        try {
+            console.log('직접 API 호출로 로그인:', email)
+            const response = await fetch(`${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    email: email,
+                    password: password
+                })
+            })
+            
+            if (!response.ok) {
+                const errorData = await response.json()
+                console.error('로그인 API 응답 오류:', response.status, errorData)
+                throw new Error(errorData.error_description || errorData.msg || '로그인에 실패했습니다.')
+            }
+            
+            const data = await response.json()
+            console.log('직접 API 로그인 성공:', data)
+            
+            // 로그인 성공 시 토큰을 localStorage에 저장
+            if (data.access_token) {
+                localStorage.setItem('supabase_access_token', data.access_token)
+                localStorage.setItem('supabase_user', JSON.stringify(data.user))
+            }
+            
+            return { data, error: null }
+        } catch (error) {
+            console.error('직접 API 로그인 실패:', error)
+            return { data: null, error }
+        }
+    },
+    
+    // 저장된 토큰으로 사용자 정보 가져오기
+    getCurrentUserFromToken() {
+        const token = localStorage.getItem('supabase_access_token')
+        const userStr = localStorage.getItem('supabase_user')
+        
+        if (token && userStr) {
+            try {
+                const user = JSON.parse(userStr)
+                return user
+            } catch (error) {
+                console.error('사용자 정보 파싱 오류:', error)
+                return null
+            }
+        }
+        
+        return null
     }
 }
 

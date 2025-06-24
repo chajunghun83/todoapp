@@ -5,12 +5,20 @@ const Auth = {
         try {
             console.log('회원가입 시도:', { email, fullName })
             
-            // 테스트 모드 확인
-            const isTestMode = localStorage.getItem('test_logged_in') !== null
-            
-            if (!isTestMode) {
-                // 실제 Supabase 호출
-                console.log('실제 Supabase 회원가입 시도...')
+            // GitHub Pages 환경에서는 직접 API 호출 사용
+            if (window.location.hostname.includes('github.io')) {
+                console.log('GitHub Pages 환경 - 직접 API 호출로 회원가입')
+                const result = await DirectSupabaseAPI.signUp(email, password)
+                
+                if (result.error) {
+                    throw result.error
+                }
+                
+                console.log('직접 API 회원가입 성공:', result.data)
+                SupabaseUtils.showSuccess('회원가입이 완료되었습니다! 이메일을 확인해주세요.')
+                return { success: true, user: result.data.user }
+            } else {
+                // 로컬 환경에서는 Supabase 클라이언트 사용
                 const { data, error } = await supabaseClient.auth.signUp({
                     email: email,
                     password: password,
@@ -21,78 +29,11 @@ const Auth = {
                     }
                 })
 
-                if (error) {
-                    console.error('Supabase 회원가입 오류:', error)
-                    
-                    // 회원가입 오류 코드별 한글 메시지 처리
-                    let errorMessage = '회원가입에 실패했습니다.'
-                    
-                    if (error.message.includes('User already registered')) {
-                        errorMessage = '이미 등록된 이메일입니다. 로그인을 시도해보세요.'
-                    } else if (error.message.includes('Email already exists')) {
-                        errorMessage = '이미 사용 중인 이메일입니다. 다른 이메일을 사용해주세요.'
-                    } else if (error.message.includes('Password should be at least')) {
-                        errorMessage = '비밀번호는 최소 6자 이상이어야 합니다.'
-                    } else if (error.message.includes('Invalid email')) {
-                        errorMessage = '올바르지 않은 이메일 형식입니다.'
-                    } else if (error.message.includes('Signup disabled')) {
-                        errorMessage = '현재 회원가입이 비활성화되어 있습니다.'
-                    } else if (error.message.includes('Email rate limit exceeded')) {
-                        errorMessage = '이메일 전송 한도를 초과했습니다. 잠시 후 다시 시도해주세요.'
-                    } else if (error.message.includes('Password is too weak')) {
-                        errorMessage = '비밀번호가 너무 약합니다. 더 강한 비밀번호를 사용해주세요.'
-                    } else if (error.message.includes('Network error') || error.message.includes('fetch')) {
-                        errorMessage = '네트워크 연결을 확인해주세요.'
-                    } else if (error.message.includes('Database error')) {
-                        errorMessage = '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.'
-                    } else if (error.message.includes('Email service unavailable')) {
-                        errorMessage = '이메일 서비스가 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해주세요.'
-                    }
-                    
-                    SupabaseUtils.showError(errorMessage)
-                    return { success: false, error: errorMessage }
-                }
+                if (error) throw error
 
                 console.log('Supabase 회원가입 성공:', data)
-                
-                // 이메일 확인이 필요한 경우 처리
-                if (data.user && !data.user.email_confirmed_at) {
-                    // 이메일 확인 필요 메시지와 함께 테스트 모드 제안
-                    const message = '회원가입이 완료되었습니다! 이메일을 확인하여 계정을 활성화해주세요.\n\n만약 이메일이 오지 않는다면 "확인" 버튼을 눌러 테스트 모드로 전환할 수 있습니다.'
-                    
-                    setTimeout(() => {
-                        const useTestMode = confirm('이메일이 도착하지 않았나요?\n\n테스트 모드로 전환하여 바로 로그인하시겠습니까?')
-                        if (useTestMode) {
-                            localStorage.setItem('test_logged_in', 'true')
-                            localStorage.setItem('test_user_email', email)
-                            SupabaseUtils.showSuccess('테스트 모드로 전환되었습니다!')
-                            setTimeout(() => {
-                                window.location.href = '../index.html'
-                            }, 1000)
-                        }
-                    }, 5000) // 5초 후에 테스트 모드 제안
-                    
-                    SupabaseUtils.showSuccess('회원가입이 완료되었습니다! 이메일을 확인하여 계정을 활성화해주세요.')
-                    return { success: true, user: data.user, emailConfirmationRequired: true }
-                }
-                
-                // 프로필 생성 시도
-                if (data.user) {
-                    try {
-                        await this.createProfile(data.user.id, email, fullName)
-                    } catch (profileError) {
-                        console.warn('프로필 생성 실패:', profileError)
-                        // 프로필 생성 실패해도 회원가입은 성공으로 처리
-                    }
-                }
-
-                SupabaseUtils.showSuccess('회원가입이 완료되었습니다!')
+                SupabaseUtils.showSuccess('회원가입이 완료되었습니다! 이메일을 확인해주세요.')
                 return { success: true, user: data.user }
-            } else {
-                // 테스트 모드 회원가입
-                console.log('테스트 모드 회원가입')
-                SupabaseUtils.showSuccess('테스트 모드 회원가입이 완료되었습니다!')
-                return { success: true, user: { email, id: 'test-user-id' } }
             }
         } catch (error) {
             const message = SupabaseUtils.handleError(error)
@@ -111,10 +52,23 @@ const Auth = {
             console.log('실제 Supabase 로그인 시도...')
             
             try {
-                const { data, error } = await supabaseClient.auth.signInWithPassword({
-                    email: email,
-                    password: password
-                })
+                let data, error
+                
+                // GitHub Pages 환경에서는 직접 API 호출 사용
+                if (window.location.hostname.includes('github.io')) {
+                    console.log('GitHub Pages 환경 - 직접 API 호출로 로그인')
+                    const result = await DirectSupabaseAPI.signIn(email, password)
+                    data = result.data
+                    error = result.error
+                } else {
+                    // 로컬 환경에서는 Supabase 클라이언트 사용
+                    const result = await supabaseClient.auth.signInWithPassword({
+                        email: email,
+                        password: password
+                    })
+                    data = result.data
+                    error = result.error
+                }
 
                 if (error) {
                     console.error('Supabase 로그인 오류:', error)
@@ -198,6 +152,10 @@ const Auth = {
                 // 실제 Supabase 로그아웃
                 const { error } = await supabaseClient.auth.signOut()
                 if (error) throw error
+                
+                // 저장된 토큰도 제거
+                localStorage.removeItem('supabase_access_token')
+                localStorage.removeItem('supabase_user')
             }
 
             SupabaseUtils.showSuccess('로그아웃되었습니다.')
@@ -365,18 +323,15 @@ const Auth = {
         }
     },
 
-    // 폼 유효성 검사
     validateEmail(email) {
         const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
         return emailRegex.test(email)
     },
 
     validatePassword(password) {
-        // 최소 6자, 영문자와 숫자 포함
         return password.length >= 6 && /[A-Za-z]/.test(password) && /\d/.test(password)
     },
 
-    // 회원가입 폼 처리
     async handleSignUpForm(event) {
         event.preventDefault()
         
@@ -386,7 +341,6 @@ const Auth = {
         const confirmPassword = formData.get('confirmPassword')
         const fullName = formData.get('fullName').trim()
 
-        // 필수 필드 검사
         if (!fullName) {
             SupabaseUtils.showError('이름을 입력해주세요.')
             return
@@ -431,7 +385,6 @@ const Auth = {
             const result = await this.signUp(email, password, fullName)
             
             if (result.success) {
-                // 성공 시 로그인 페이지로 이동
                 setTimeout(() => {
                     window.location.href = 'login.html'
                 }, 2000)
@@ -441,7 +394,6 @@ const Auth = {
         }
     },
 
-    // 로그인 폼 처리
     async handleSignInForm(event) {
         event.preventDefault()
         
@@ -449,7 +401,6 @@ const Auth = {
         const email = formData.get('email')
         const password = formData.get('password')
 
-        // 유효성 검사
         if (!this.validateEmail(email)) {
             SupabaseUtils.showError('올바른 이메일 주소를 입력해주세요.')
             return
@@ -464,7 +415,6 @@ const Auth = {
             const result = await this.signIn(email, password)
             
             if (result.success) {
-                // 성공 시 메인 페이지로 이동
                 console.log('로그인 성공 - 1초 후 메인 페이지로 이동')
                 setTimeout(() => {
                     console.log('메인 페이지로 리다이렉트 실행')
@@ -480,26 +430,12 @@ const Auth = {
 // 전역으로 내보내기
 window.Auth = Auth
 
-// 페이지 로드 시 인증 상태 확인 (임시 수정)
+// 페이지 로드 시 인증 상태 확인
 document.addEventListener('DOMContentLoaded', async () => {
-    console.log('페이지 로드됨 - UI 확인 모드')
+    console.log('페이지 로드됨')
     
-    // 인증 상태 변경 리스너 설정 (임시 비활성화)
-    /*
-    SupabaseUtils.onAuthStateChange((event, session) => {
-        if (event === 'SIGNED_IN') {
-            console.log('사용자가 로그인했습니다:', session.user)
-        } else if (event === 'SIGNED_OUT') {
-            console.log('사용자가 로그아웃했습니다')
-        }
-    })
-    */
-
-    // 현재 페이지에서 인증 상태 확인 (임시 비활성화)
     await Auth.checkAuthAndRedirect()
-    
-    // 사용자 정보 표시 (더미 데이터)
     Auth.displayUserInfo()
 })
 
-console.log('인증 모듈이 로드되었습니다. (UI 확인 모드)') 
+console.log('인증 모듈이 로드되었습니다.')

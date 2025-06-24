@@ -2,9 +2,59 @@
 const SUPABASE_URL = 'https://ouraddztctgfeeqdqqas.supabase.co'
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im91cmFkZHp0Y3RnZmVlcWRxcWFzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTAzOTY0NzksImV4cCI6MjA2NTk3MjQ3OX0.reT9RDNCHL0ezW-0jjFUvj23zSbR1dB0zKVTq8N5WrA'
 
-// Supabase 클라이언트 초기화
+// GitHub Pages CORS 우회를 위한 설정
+const SUPABASE_CONFIG = {
+    global: {
+        headers: {
+            'apikey': SUPABASE_ANON_KEY,
+            'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+            'Content-Type': 'application/json',
+            'Prefer': 'return=representation'
+        },
+        fetch: (url, options = {}) => {
+            // GitHub Pages에서 CORS 문제가 있을 경우 프록시 사용
+            const isGitHubPages = window.location.hostname.includes('github.io')
+            
+            if (isGitHubPages && options.method !== 'GET') {
+                console.log('GitHub Pages 환경에서 CORS 프록시 사용')
+                // CORS 프록시 사용 (POST, PUT, DELETE 요청의 경우)
+                const proxyUrl = `https://cors-anywhere.herokuapp.com/${url}`
+                const corsOptions = {
+                    ...options,
+                    headers: {
+                        ...options.headers,
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': options.headers?.Authorization || `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    }
+                }
+                console.log('프록시 요청:', proxyUrl, corsOptions)
+                return fetch(proxyUrl, corsOptions)
+            } else {
+                // 일반 CORS 설정
+                const corsOptions = {
+                    ...options,
+                    mode: 'cors',
+                    credentials: 'omit',
+                    headers: {
+                        ...options.headers,
+                        'apikey': SUPABASE_ANON_KEY,
+                        'Authorization': options.headers?.Authorization || `Bearer ${SUPABASE_ANON_KEY}`,
+                        'Content-Type': 'application/json'
+                    }
+                }
+                
+                console.log('일반 CORS fetch 요청:', url, corsOptions)
+                return fetch(url, corsOptions)
+            }
+        }
+    }
+}
+
+// Supabase 클라이언트 초기화 (CORS 설정 포함)
 const { createClient } = supabase
-const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+const supabaseClient = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_CONFIG)
 
 // 내보내기 (전역 변수로 사용)
 window.supabaseClient = supabaseClient
@@ -214,6 +264,124 @@ const SupabaseUtils = {
 
 // 전역으로 내보내기
 window.SupabaseUtils = SupabaseUtils
+
+// GitHub Pages CORS 우회를 위한 직접 API 호출 함수들
+const DirectSupabaseAPI = {
+    // 직접 fetch로 todos 조회
+    async getTodos(userId) {
+        try {
+            console.log('직접 API 호출로 todos 조회:', userId)
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/todos?user_id=eq.${userId}&select=*`, {
+                method: 'GET',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Range': '0-999'
+                }
+            })
+            
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+            }
+            
+            const data = await response.json()
+            console.log('직접 API 조회 성공:', data)
+            return { data, error: null }
+        } catch (error) {
+            console.error('직접 API 조회 실패:', error)
+            return { data: null, error }
+        }
+    },
+    
+    // 직접 fetch로 todo 추가
+    async insertTodo(todoData) {
+        try {
+            console.log('직접 API 호출로 todo 추가:', todoData)
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/todos`, {
+                method: 'POST',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(todoData)
+            })
+            
+            if (!response.ok) {
+                const errorText = await response.text()
+                console.error('API 응답 오류:', response.status, errorText)
+                throw new Error(`HTTP ${response.status}: ${errorText}`)
+            }
+            
+            const data = await response.json()
+            console.log('직접 API 추가 성공:', data)
+            return { data, error: null }
+        } catch (error) {
+            console.error('직접 API 추가 실패:', error)
+            return { data: null, error }
+        }
+    },
+    
+    // 직접 fetch로 todo 업데이트
+    async updateTodo(todoId, updates) {
+        try {
+            console.log('직접 API 호출로 todo 업데이트:', todoId, updates)
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/todos?id=eq.${todoId}`, {
+                method: 'PATCH',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json',
+                    'Prefer': 'return=representation'
+                },
+                body: JSON.stringify(updates)
+            })
+            
+            if (!response.ok) {
+                const errorText = await response.text()
+                throw new Error(`HTTP ${response.status}: ${errorText}`)
+            }
+            
+            const data = await response.json()
+            console.log('직접 API 업데이트 성공:', data)
+            return { data, error: null }
+        } catch (error) {
+            console.error('직접 API 업데이트 실패:', error)
+            return { data: null, error }
+        }
+    },
+    
+    // 직접 fetch로 todo 삭제
+    async deleteTodo(todoId) {
+        try {
+            console.log('직접 API 호출로 todo 삭제:', todoId)
+            const response = await fetch(`${SUPABASE_URL}/rest/v1/todos?id=eq.${todoId}`, {
+                method: 'DELETE',
+                headers: {
+                    'apikey': SUPABASE_ANON_KEY,
+                    'Authorization': `Bearer ${SUPABASE_ANON_KEY}`,
+                    'Content-Type': 'application/json'
+                }
+            })
+            
+            if (!response.ok) {
+                const errorText = await response.text()
+                throw new Error(`HTTP ${response.status}: ${errorText}`)
+            }
+            
+            console.log('직접 API 삭제 성공')
+            return { data: null, error: null }
+        } catch (error) {
+            console.error('직접 API 삭제 실패:', error)
+            return { data: null, error }
+        }
+    }
+}
+
+// 전역으로 내보내기
+window.DirectSupabaseAPI = DirectSupabaseAPI
 
 // 개발 도구 함수들
 window.testSupabaseConnection = async function() {

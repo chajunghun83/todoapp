@@ -104,11 +104,25 @@ const TodoApp = {
             console.log('실제 Supabase에서 Todo 데이터 로드 중...', 'User ID:', user.id)
             
             try {
-                const { data, error } = await supabaseClient
-                    .from('todos')
-                    .select('*')
-                    .eq('user_id', user.id)
-                    .order('created_at', { ascending: false })
+                let data, error
+                
+                // GitHub Pages 환경에서는 직접 API 호출 사용
+                if (window.location.hostname.includes('github.io')) {
+                    console.log('GitHub Pages 환경 - 직접 API 호출 사용')
+                    const result = await DirectSupabaseAPI.getTodos(user.id)
+                    data = result.data
+                    error = result.error
+                } else {
+                    // 로컬 환경에서는 Supabase 클라이언트 사용
+                    const result = await supabaseClient
+                        .from('todos')
+                        .select('*')
+                        .eq('user_id', user.id)
+                        .order('created_at', { ascending: false })
+                    
+                    data = result.data
+                    error = result.error
+                }
 
                 if (error) {
                     console.error('Supabase Todo 로드 오류:', error)
@@ -356,10 +370,24 @@ const TodoApp = {
                 console.log('=== Supabase 삽입 시도 ===')
                 console.log('완전한 데이터:', completeTodoData)
                 
-                const { data, error } = await supabaseClient
-                    .from('todos')
-                    .insert([completeTodoData])
-                    .select() // 추가된 데이터 반환
+                let data, error
+                
+                // GitHub Pages 환경에서는 직접 API 호출 사용
+                if (window.location.hostname.includes('github.io')) {
+                    console.log('GitHub Pages 환경 - 직접 API 호출로 todo 추가')
+                    const result = await DirectSupabaseAPI.insertTodo(completeTodoData)
+                    data = result.data
+                    error = result.error
+                } else {
+                    // 로컬 환경에서는 Supabase 클라이언트 사용
+                    const result = await supabaseClient
+                        .from('todos')
+                        .insert([completeTodoData])
+                        .select() // 추가된 데이터 반환
+                    
+                    data = result.data
+                    error = result.error
+                }
 
                 console.log('=== Supabase 응답 ===')
                 console.log('응답 데이터:', data)

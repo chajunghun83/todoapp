@@ -1,0 +1,266 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>캘린더 텍스트 오버플로우 테스트</title>
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        body {
+            padding: 20px;
+            background: #f8f9fa;
+        }
+        
+        .test-container {
+            max-width: 400px;
+            margin: 0 auto;
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.1);
+        }
+        
+        .test-calendar-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 1px;
+            background: #e0e0e0;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        
+        .test-calendar-day {
+            background: white;
+            min-height: 80px;
+            padding: 8px;
+            position: relative;
+        }
+        
+        .test-calendar-day-number {
+            font-size: 14px;
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+        
+        .test-calendar-todos {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        
+        /* 기존 스타일 복사 */
+        .test-calendar-todo-item {
+            background: #667eea;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+            margin-bottom: 2px;
+            max-width: 100%;
+            display: block;
+        }
+        
+        /* 개선된 스타일 */
+        .test-calendar-todo-item.improved {
+            /* 더 강화된 텍스트 처리 */
+            word-break: break-all;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: calc(100% - 4px);
+            box-sizing: border-box;
+        }
+        
+        /* 모바일 테스트 */
+        @media (max-width: 480px) {
+            .test-calendar-day {
+                min-height: 60px;
+                padding: 4px;
+            }
+            
+            .test-calendar-todo-item {
+                font-size: 8px;
+                padding: 1px 3px;
+                border-radius: 2px;
+            }
+            
+            .test-calendar-day-number {
+                font-size: 13px;
+                margin-bottom: 2px;
+            }
+        }
+        
+        @media (max-width: 360px) {
+            .test-calendar-day {
+                min-height: 50px;
+                padding: 3px;
+            }
+            
+            .test-calendar-todo-item {
+                font-size: 7px;
+                padding: 1px 2px;
+            }
+            
+            .test-calendar-day-number {
+                font-size: 12px;
+            }
+        }
+        
+        .test-info {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #e3f2fd;
+            border-radius: 8px;
+            border-left: 4px solid #2196f3;
+        }
+    </style>
+</head>
+<body>
+    <div class="test-container">
+                    <div class="test-info">
+            <h3>캘린더 텍스트 오버플로우 테스트</h3>
+            <p>긴 제목들이 어떻게 표시되는지 확인해보세요. 브라우저 개발자 도구에서 모바일 뷰로 전환해서 테스트할 수 있습니다.</p>
+            <button onclick="updateTexts()" style="padding: 8px 16px; background: #667eea; color: white; border: none; border-radius: 4px; cursor: pointer; margin-top: 10px;">JavaScript 텍스트 제한 적용</button>
+        </div>
+        
+        <div class="test-calendar-grid">
+            <!-- 헤더 -->
+            <div style="background: #667eea; color: white; padding: 8px; text-align: center; font-weight: bold;">일</div>
+            <div style="background: #667eea; color: white; padding: 8px; text-align: center; font-weight: bold;">월</div>
+            <div style="background: #667eea; color: white; padding: 8px; text-align: center; font-weight: bold;">화</div>
+            <div style="background: #667eea; color: white; padding: 8px; text-align: center; font-weight: bold;">수</div>
+            <div style="background: #667eea; color: white; padding: 8px; text-align: center; font-weight: bold;">목</div>
+            <div style="background: #667eea; color: white; padding: 8px; text-align: center; font-weight: bold;">금</div>
+            <div style="background: #667eea; color: white; padding: 8px; text-align: center; font-weight: bold;">토</div>
+            
+            <!-- 테스트 날짜들 -->
+            <div class="test-calendar-day">
+                <div class="test-calendar-day-number">1</div>
+                <div class="test-calendar-todos">
+                    <div class="test-calendar-todo-item">짧은 제목</div>
+                </div>
+            </div>
+            
+            <div class="test-calendar-day">
+                <div class="test-calendar-day-number">2</div>
+                <div class="test-calendar-todos">
+                    <div class="test-calendar-todo-item">데이터 유지보수 서비스 관리</div>
+                </div>
+            </div>
+            
+            <div class="test-calendar-day">
+                <div class="test-calendar-day-number">3</div>
+                <div class="test-calendar-todos">
+                    <div class="test-calendar-todo-item improved">데이터 유지보수 서비스 관리 (개선됨)</div>
+                </div>
+            </div>
+            
+            <div class="test-calendar-day">
+                <div class="test-calendar-day-number">4</div>
+                <div class="test-calendar-todos">
+                    <div class="test-calendar-todo-item">프로젝트 기획서 작성 및 검토</div>
+                    <div class="test-calendar-todo-item">팀 미팅 준비</div>
+                </div>
+            </div>
+            
+            <div class="test-calendar-day">
+                <div class="test-calendar-day-number">5</div>
+                <div class="test-calendar-todos">
+                    <div class="test-calendar-todo-item improved">프로젝트 기획서 작성 및 검토 (개선됨)</div>
+                    <div class="test-calendar-todo-item improved">팀 미팅 준비 (개선됨)</div>
+                </div>
+            </div>
+            
+            <div class="test-calendar-day">
+                <div class="test-calendar-day-number">6</div>
+                <div class="test-calendar-todos">
+                    <div class="test-calendar-todo-item">아주 아주 아주 긴 제목의 할일 항목입니다</div>
+                </div>
+            </div>
+            
+            <div class="test-calendar-day">
+                <div class="test-calendar-day-number">7</div>
+                <div class="test-calendar-todos">
+                    <div class="test-calendar-todo-item improved">아주 아주 아주 긴 제목의 할일 항목입니다 (개선됨)</div>
+                </div>
+            </div>
+        </div>
+        
+        <div style="margin-top: 20px; padding: 15px; background: #fff3cd; border-radius: 8px; border-left: 4px solid #ffc107;">
+            <h4>테스트 방법:</h4>
+            <ol>
+                <li>브라우저 개발자 도구 열기 (F12)</li>
+                <li>모바일 뷰 토글 (Ctrl+Shift+M)</li>
+                <li>다양한 화면 크기로 테스트</li>
+                <li>텍스트가 어떻게 잘리는지 확인</li>
+            </ol>
+        </div>
+    </div>
+    
+    <script>
+        function truncateText(text, maxLength) {
+            if (text.length <= maxLength) return text
+            return text.substring(0, maxLength - 3) + '...'
+        }
+        
+        function updateTexts() {
+            // 화면 크기에 따른 텍스트 길이 제한
+            let maxLength = 20 // 기본값
+            if (window.innerWidth <= 360) {
+                maxLength = 8  // 매우 작은 화면
+            } else if (window.innerWidth <= 480) {
+                maxLength = 12 // 작은 화면
+            } else if (window.innerWidth <= 768) {
+                maxLength = 15 // 중간 화면
+            }
+            
+            const todoItems = document.querySelectorAll('.test-calendar-todo-item')
+            todoItems.forEach(item => {
+                const originalText = item.getAttribute('data-original-text') || item.textContent
+                if (!item.getAttribute('data-original-text')) {
+                    item.setAttribute('data-original-text', originalText)
+                }
+                
+                // 이모지와 텍스트 분리
+                const match = originalText.match(/^(🚀|📅|▶)?\s*(.*)$/)
+                const prefix = match ? (match[1] || '') : ''
+                const text = match ? match[2] : originalText
+                
+                const truncatedText = truncateText(text, maxLength)
+                item.textContent = prefix ? `${prefix} ${truncatedText}` : truncatedText
+            })
+            
+            // 현재 화면 크기 정보 표시
+            const infoDiv = document.querySelector('.test-info')
+            const existingInfo = infoDiv.querySelector('.screen-info')
+            if (existingInfo) existingInfo.remove()
+            
+            const screenInfo = document.createElement('div')
+            screenInfo.className = 'screen-info'
+            screenInfo.style.cssText = 'margin-top: 10px; padding: 10px; background: #f0f0f0; border-radius: 4px; font-size: 14px;'
+            screenInfo.innerHTML = `
+                <strong>현재 화면 정보:</strong><br>
+                너비: ${window.innerWidth}px<br>
+                최대 텍스트 길이: ${maxLength}자
+            `
+            infoDiv.appendChild(screenInfo)
+        }
+        
+        // 화면 크기 변경 시 자동 업데이트
+        window.addEventListener('resize', updateTexts)
+        
+        // 페이지 로드 시 초기 설정
+        document.addEventListener('DOMContentLoaded', function() {
+            // 원본 텍스트 저장
+            const todoItems = document.querySelectorAll('.test-calendar-todo-item')
+            todoItems.forEach(item => {
+                item.setAttribute('data-original-text', item.textContent)
+            })
+        })
+    </script>
+</body>
+</html> 

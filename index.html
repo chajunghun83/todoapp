@@ -847,7 +847,24 @@
                             displayText = todo.title
                         }
                         
-                        todoElement.textContent = `${prefix} ${displayText}`
+                        // 모바일에서 텍스트 길이 제한
+                        function truncateText(text, maxLength) {
+                            if (text.length <= maxLength) return text
+                            return text.substring(0, maxLength - 3) + '...'
+                        }
+                        
+                        // 화면 크기에 따른 텍스트 길이 제한
+                        let maxLength = 20 // 기본값
+                        if (window.innerWidth <= 360) {
+                            maxLength = 8  // 매우 작은 화면
+                        } else if (window.innerWidth <= 480) {
+                            maxLength = 12 // 작은 화면
+                        } else if (window.innerWidth <= 768) {
+                            maxLength = 15 // 중간 화면
+                        }
+                        
+                        const truncatedText = truncateText(displayText, maxLength)
+                        todoElement.textContent = `${prefix} ${truncatedText}`
                         todoElement.title = `${todo.title}${todo.description ? '\n' + todo.description : ''}`
                         todoElement.onclick = () => openEditModal(todo.id)
                         

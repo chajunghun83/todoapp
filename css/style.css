@@ -297,6 +297,7 @@ main {
     position: relative;
     border: none;
     transition: background-color 0.3s;
+    overflow: hidden; /* 날짜 칸에서 넘치는 내용 숨김 */
 }
 
 .calendar-day:hover {
@@ -322,6 +323,8 @@ main {
     display: flex;
     flex-direction: column;
     gap: 2px;
+    overflow: hidden; /* 할일 컨테이너에서 넘치는 내용 숨김 */
+    width: 100%;
 }
 
 .calendar-todo-item {
@@ -335,6 +338,11 @@ main {
     text-overflow: ellipsis;
     white-space: nowrap;
     margin-bottom: 2px;
+    max-width: 100%;
+    box-sizing: border-box;
+    display: block;
+    width: 100%;
+    min-width: 0; /* Flexbox 자식에서 텍스트 오버플로우가 제대로 작동하도록 */
 }
 
 /* 시작일 스타일 */
@@ -580,6 +588,10 @@ main {
         padding: 1px 4px;
         margin-bottom: 1px;
         line-height: 1.2;
+        max-width: calc(100% - 2px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
     
     .calendar-todos {
@@ -661,7 +673,7 @@ main {
     }
     
     .calendar-day {
-        min-height: 60px;
+        min-height: 65px;
         padding: 4px;
     }
     
@@ -674,6 +686,10 @@ main {
         font-size: 8px;
         padding: 1px 3px;
         border-radius: 2px;
+        max-width: calc(100% - 2px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
 }
 
@@ -692,7 +708,7 @@ main {
     }
     
     .calendar-day {
-        min-height: 50px;
+        min-height: 55px;
         padding: 3px;
     }
     
@@ -703,6 +719,10 @@ main {
     .calendar-todo-item {
         font-size: 7px;
         padding: 1px 2px;
+        max-width: calc(100% - 1px);
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
     }
     
     .calendar-nav {

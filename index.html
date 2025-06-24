@@ -648,6 +648,12 @@
             document.getElementById('grid-view').style.display = view === 'grid' ? 'block' : 'none'
             document.getElementById('calendar-view').style.display = view === 'calendar' ? 'block' : 'none'
             
+            // 검색 조건 표시/숨김 - 그리드 뷰에서만 표시
+            const filterCard = document.querySelector('.filter-card')
+            if (filterCard) {
+                filterCard.style.display = view === 'grid' ? 'block' : 'none'
+            }
+            
             if (view === 'calendar') {
                 renderCalendar()
             }

@@ -19,7 +19,19 @@ const TodoApp = {
         await this.loadTodos()
         this.setupRealtimeSubscription()
         
+        // 기본 뷰 설정 (그리드 뷰가 기본, 검색 조건 표시)
+        this.initializeView()
+        
         console.log('Todo 앱 초기화 완료')
+    },
+
+    // 뷰 초기화
+    initializeView() {
+        // 기본적으로 그리드 뷰이므로 검색 조건 표시
+        const filterCard = document.querySelector('.filter-card')
+        if (filterCard) {
+            filterCard.style.display = 'block'
+        }
     },
 
     // 현재 모드에 따른 UI 업데이트

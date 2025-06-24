@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Todo 앱 - 할 일 관리</title>
+    <title>Todo 앱</title>
+    <link rel="icon" href="favicon.svg" type="image/svg+xml">
     <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -235,6 +236,55 @@
         </div>
     </div>
 
+    <!-- 프로필 변경 모달 -->
+    <div id="profile-modal" class="modal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h3>회원정보 변경</h3>
+                <button class="modal-close" onclick="closeProfileModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="profile-form">
+                    <div class="form-group">
+                        <label for="profile-email">이메일 (변경 불가)</label>
+                        <input type="email" id="profile-email" name="email" class="form-control" readonly disabled>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="profile-name">이름</label>
+                        <input type="text" id="profile-name" name="full_name" class="form-control" placeholder="이름을 입력하세요">
+                    </div>
+                    
+                    <hr>
+                    <h4>비밀번호 변경</h4>
+                    <p class="form-text">비밀번호를 변경하지 않으려면 아래 필드들을 비워두세요.</p>
+                    
+                    <div class="form-group">
+                        <label for="current-password">현재 비밀번호</label>
+                        <input type="password" id="current-password" name="current_password" class="form-control" placeholder="현재 비밀번호를 입력하세요">
+                        <small class="form-text">비밀번호를 변경하려면 현재 비밀번호를 입력하세요</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="new-password">새 비밀번호</label>
+                        <input type="password" id="new-password" name="new_password" class="form-control" placeholder="새 비밀번호를 입력하세요">
+                        <small class="form-text">6자 이상, 영문자+숫자</small>
+                    </div>
+                    
+                    <div class="form-group">
+                        <label for="confirm-password">새 비밀번호 확인</label>
+                        <input type="password" id="confirm-password" name="confirm_password" class="form-control" placeholder="새 비밀번호를 다시 입력하세요">
+                    </div>
+                    
+                    <div class="modal-actions">
+                        <button type="submit" class="btn btn-primary">변경 완료</button>
+                        <button type="button" class="btn btn-secondary" onclick="closeProfileModal()">취소</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <!-- 모달 오버레이 -->
     <div id="modal-overlay" class="modal-overlay" style="display: none;" onclick="closeAllModals()"></div>
 
@@ -277,6 +327,97 @@
             }
         }
 
+        // 프로필 폼 제출 처리
+        document.getElementById('profile-form').addEventListener('submit', async function(e) {
+            e.preventDefault()
+            
+            const formData = new FormData(e.target)
+            const fullName = formData.get('full_name').trim()
+            const currentPassword = formData.get('current_password')
+            const newPassword = formData.get('new_password')
+            const confirmPassword = formData.get('confirm_password')
+            
+            try {
+                const testLoggedIn = localStorage.getItem('test_logged_in')
+                
+                // 이름 변경 처리
+                if (fullName) {
+                    if (testLoggedIn === 'true') {
+                        // 테스트 모드에서 이름 변경
+                        localStorage.setItem('test_user_name', fullName)
+                        SupabaseUtils.showSuccess('이름이 변경되었습니다!')
+                    } else {
+                        // 실제 Supabase에서 프로필 업데이트
+                        const user = await SupabaseUtils.getCurrentUser()
+                        if (user) {
+                            await Auth.updateProfile(user.id, { full_name: fullName })
+                            SupabaseUtils.showSuccess('이름이 변경되었습니다!')
+                        }
+                    }
+                }
+                
+                // 비밀번호 변경 처리
+                if (currentPassword && newPassword) {
+                    // 유효성 검사
+                    if (newPassword.length < 6) {
+                        SupabaseUtils.showError('새 비밀번호는 6자 이상이어야 합니다.')
+                        return
+                    }
+                    
+                    if (!/[A-Za-z]/.test(newPassword) || !/\d/.test(newPassword)) {
+                        SupabaseUtils.showError('새 비밀번호는 영문자와 숫자를 포함해야 합니다.')
+                        return
+                    }
+                    
+                    if (newPassword !== confirmPassword) {
+                        SupabaseUtils.showError('새 비밀번호가 일치하지 않습니다.')
+                        return
+                    }
+                    
+                    if (testLoggedIn === 'true') {
+                        // 테스트 모드에서는 비밀번호 변경 시뮬레이션
+                        SupabaseUtils.showSuccess('테스트 모드: 비밀번호가 변경되었습니다!')
+                    } else {
+                        // 현재 비밀번호 확인
+                        const email = document.getElementById('profile-email').value
+                        const { error: signInError } = await supabaseClient.auth.signInWithPassword({
+                            email: email,
+                            password: currentPassword
+                        })
+                        
+                        if (signInError) {
+                            SupabaseUtils.showError('현재 비밀번호가 올바르지 않습니다.')
+                            return
+                        }
+                        
+                        // 새 비밀번호로 변경
+                        const { error: updateError } = await supabaseClient.auth.updateUser({
+                            password: newPassword
+                        })
+                        
+                        if (updateError) {
+                            SupabaseUtils.showError('비밀번호 변경에 실패했습니다: ' + updateError.message)
+                            return
+                        }
+                        
+                        SupabaseUtils.showSuccess('비밀번호가 변경되었습니다!')
+                    }
+                }
+                
+                // 사용자 정보 다시 표시
+                await Auth.displayUserInfo()
+                
+                // 모달 닫기
+                setTimeout(() => {
+                    closeProfileModal()
+                }, 1500)
+                
+            } catch (error) {
+                console.error('프로필 변경 오류:', error)
+                SupabaseUtils.showError('프로필 변경에 실패했습니다: ' + error.message)
+            }
+        })
+
         // 페이지 로드 시 기본 시작일 설정
         document.addEventListener('DOMContentLoaded', setDefaultStartDate)
         
@@ -295,6 +436,70 @@
             
             // 시작일 기본값 설정
             setDefaultStartDate()
+        }
+
+        // 프로필 모달 관련 함수들
+        async function openProfileModal() {
+            const modal = document.getElementById('profile-modal')
+            const overlay = document.getElementById('modal-overlay')
+            
+            // 현재 사용자 정보 로드
+            await loadCurrentUserProfile()
+            
+            modal.style.display = 'block'
+            overlay.style.display = 'block'
+            document.body.style.overflow = 'hidden'
+        }
+
+        function closeProfileModal() {
+            const modal = document.getElementById('profile-modal')
+            const overlay = document.getElementById('modal-overlay')
+            modal.style.display = 'none'
+            overlay.style.display = 'none'
+            document.body.style.overflow = 'auto'
+            
+            // 폼 리셋
+            document.getElementById('profile-form').reset()
+        }
+
+        // 현재 사용자 프로필 정보 로드
+        async function loadCurrentUserProfile() {
+            try {
+                const testLoggedIn = localStorage.getItem('test_logged_in')
+                
+                if (testLoggedIn === 'true') {
+                    // 테스트 모드
+                    const testUserEmail = localStorage.getItem('test_user_email') || 'test@example.com'
+                    const testUserName = localStorage.getItem('test_user_name') || '차정훈'
+                    
+                    document.getElementById('profile-email').value = testUserEmail
+                    document.getElementById('profile-name').value = testUserName
+                } else {
+                    // 실제 Supabase 사용자
+                    const user = await SupabaseUtils.getCurrentUser()
+                    if (user) {
+                        document.getElementById('profile-email').value = user.email
+                        
+                        // 프로필에서 이름 가져오기
+                        try {
+                            const profile = await Auth.getProfile(user.id)
+                            if (profile && profile.full_name) {
+                                document.getElementById('profile-name').value = profile.full_name
+                            } else if (user.user_metadata && user.user_metadata.full_name) {
+                                document.getElementById('profile-name').value = user.user_metadata.full_name
+                            }
+                        } catch (error) {
+                            console.warn('프로필 로드 실패:', error)
+                            if (user.user_metadata && user.user_metadata.full_name) {
+                                document.getElementById('profile-name').value = user.user_metadata.full_name
+                            }
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('사용자 프로필 로드 실패:', error)
+                SupabaseUtils.showError('프로필 정보를 불러올 수 없습니다.')
+            }
         }
 
         function closeAddModal() {
@@ -333,6 +538,7 @@
         function closeAllModals() {
             closeAddModal()
             closeEditModal()
+            closeProfileModal()
             closeDatePicker()
         }
 

@@ -1183,4 +1183,51 @@ input[type="range"]::-webkit-slider-container {
     .auth-header h2 {
         font-size: 1.2rem;
     }
+}
+
+/* 클릭 가능한 사용자 이름 */
+.user-name-clickable {
+    color: #007bff;
+    cursor: pointer;
+    text-decoration: underline;
+    font-weight: bold;
+    transition: all 0.2s ease;
+    user-select: none;
+}
+
+.user-name-clickable:hover {
+    color: #0056b3;
+    text-decoration: none;
+    background-color: rgba(0, 123, 255, 0.1);
+    padding: 2px 4px;
+    border-radius: 4px;
+}
+
+/* 프로필 모달 추가 스타일 */
+#profile-modal .modal-body {
+    max-width: 500px;
+}
+
+#profile-modal hr {
+    margin: 1.5rem 0;
+    border: none;
+    border-top: 1px solid #e0e0e0;
+}
+
+#profile-modal h4 {
+    color: #333;
+    margin-bottom: 0.5rem;
+    font-size: 1.1rem;
+}
+
+#profile-modal .form-text {
+    color: #666;
+    font-size: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+#profile-modal input[disabled] {
+    background-color: #f8f9fa;
+    color: #6c757d;
+    cursor: not-allowed;
 } 

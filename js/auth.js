@@ -304,7 +304,7 @@ const Auth = {
                         // 테스트 모드에서는 저장된 이름 사용, 없으면 기본 이름
                         const testUserName = localStorage.getItem('test_user_name') || '차정훈'
                         userInfoElement.innerHTML = `
-                            <span>안녕하세요, ${testUserName}님! (테스트 모드)</span>
+                            <span>안녕하세요, <span class="user-name-clickable" onclick="openProfileModal()">${testUserName}</span>님! (테스트 모드)</span>
                             <button onclick="Auth.signOut()" class="btn btn-sm btn-secondary">로그아웃</button>
                         `
                     } else {
@@ -339,7 +339,7 @@ const Auth = {
                             }
                             
                             userInfoElement.innerHTML = `
-                                <span>안녕하세요, ${displayName}님!</span>
+                                <span>안녕하세요, <span class="user-name-clickable" onclick="openProfileModal()">${displayName}</span>님!</span>
                                 <button onclick="Auth.signOut()" class="btn btn-sm btn-secondary">로그아웃</button>
                             `
                         }

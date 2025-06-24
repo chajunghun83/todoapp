@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" width="32" height="32">
+  <!-- 배경 원형 -->
+  <circle cx="16" cy="16" r="15" fill="#667eea" stroke="#5a67d8" stroke-width="2"/>
+  
+  <!-- 체크리스트 배경 -->
+  <rect x="8" y="9" width="16" height="14" rx="2" fill="white" opacity="0.95"/>
+  
+  <!-- 체크리스트 줄들 -->
+  <line x1="10" y1="13" x2="22" y2="13" stroke="#e2e8f0" stroke-width="1"/>
+  <line x1="10" y1="16" x2="22" y2="16" stroke="#e2e8f0" stroke-width="1"/>
+  <line x1="10" y1="19" x2="22" y2="19" stroke="#e2e8f0" stroke-width="1"/>
+  
+  <!-- 체크박스들 -->
+  <rect x="10" y="11.5" width="3" height="3" rx="0.5" fill="#48bb78" stroke="#38a169" stroke-width="0.5"/>
+  <rect x="10" y="14.5" width="3" height="3" rx="0.5" fill="white" stroke="#cbd5e0" stroke-width="0.5"/>
+  <rect x="10" y="17.5" width="3" height="3" rx="0.5" fill="white" stroke="#cbd5e0" stroke-width="0.5"/>
+  
+  <!-- 첫 번째 체크박스의 체크 표시 -->
+  <polyline points="10.8,12.8 11.8,13.8 13.2,12.2" stroke="white" stroke-width="1" fill="none" stroke-linecap="round" stroke-linejoin="round"/>
+  
+  <!-- 텍스트 라인들 (완료된 항목은 줄 그어짐) -->
+  <line x1="14.5" y1="13" x2="21" y2="13" stroke="#a0aec0" stroke-width="1.5"/>
+  <line x1="14.5" y1="16" x2="20" y2="16" stroke="#4a5568" stroke-width="1"/>
+  <line x1="14.5" y1="19" x2="19" y2="19" stroke="#4a5568" stroke-width="1"/>
+  
+  <!-- 완료된 항목에 취소선 -->
+  <line x1="14.5" y1="13" x2="21" y2="13" stroke="#a0aec0" stroke-width="0.8" opacity="0.7"/>
+</svg>

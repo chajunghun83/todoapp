@@ -416,22 +416,27 @@ const TodoApp = {
                 console.error('오류 힌트:', error.hint)
                 console.error('추가하려던 데이터:', completeTodoData)
                 
-                // 구체적인 오류 메시지 제공
-                if (error.code === '23503') {
-                    SupabaseUtils.showError('사용자 인증 오류: 프로필이 존재하지 않거나 외래키 제약 조건 위반입니다.')
-                } else if (error.code === '42501') {
-                    SupabaseUtils.showError('권한 오류: Row Level Security 정책에 의해 차단되었습니다.')
-                } else if (error.code === '23505') {
-                    SupabaseUtils.showError('중복된 데이터입니다.')
-                } else if (error.code === '23502') {
-                    SupabaseUtils.showError('필수 필드가 누락되었습니다.')
-                } else if (error.code === '42703') {
-                    SupabaseUtils.showError('테이블 구조가 올바르지 않습니다.')
-                } else if (error.code === 'PGRST116') {
-                    SupabaseUtils.showError('테이블이 존재하지 않습니다.')
-                } else {
-                    SupabaseUtils.showError(`데이터베이스 오류 (${error.code}): ${error.message}`)
+                // 데이터베이스 관련 오류인 경우 테스트 모드 제안
+                if (error.code === '23503' || error.code === 'PGRST116' || error.code === '42501') {
+                    // 자동으로 테스트 모드 제안 모달 표시
+                    const shouldUseTestMode = confirm(`할 일 추가에 실패했습니다.
+
+데이터베이스 설정 문제로 보입니다.
+지금 바로 테스트 모드로 전환하시겠습니까?
+
+테스트 모드에서는 모든 기능을 정상적으로 사용할 수 있습니다.
+(데이터는 브라우저에만 저장되며, 새로고침 시 초기화됩니다)`)
+                    
+                    if (shouldUseTestMode) {
+                        toggleTestMode()
+                        // toggleTestMode가 자동으로 페이지를 새로고침하므로 별도 처리 불필요
+                        return
+                    }
                 }
+                
+                // 일반적인 오류 처리
+                const errorMessage = SupabaseUtils.handleError(error)
+                SupabaseUtils.showError(errorMessage)
                 throw error
             }
 
